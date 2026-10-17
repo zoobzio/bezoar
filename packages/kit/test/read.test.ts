@@ -78,6 +78,6 @@ describe("readSources", () => {
     });
     expect(sources.migrations).toHaveLength(2);
     expect(sources.seeds).toHaveLength(1);
-    expect(sources.queries).toHaveLength(7);
+    expect(sources.queries).toHaveLength(8);
   });
 });

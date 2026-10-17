@@ -53,6 +53,19 @@ describe("the contract of the fixture", () => {
     ]);
   });
 
+  it("makes a slot nullable when it is written into a column that takes null", () => {
+    expect(contract.queries["events.insert"]?.slots).toEqual([
+      { name: "slug", type: "text", nullable: false },
+      { name: "title", type: "text", nullable: false },
+      { name: "day", type: "event_day", nullable: true },
+    ]);
+    expect(contract.queries["events.rename"]?.slots).toEqual([
+      { name: "title", type: "text", nullable: false },
+      { name: "weeks", type: "int4[]", nullable: true },
+      { name: "id", type: "int4", nullable: false },
+    ]);
+  });
+
   it("types each column and takes its nullability from SafeQL", () => {
     expect(contract.queries["events.list"]?.columns).toEqual([
       { name: "id", type: "int4", nullable: false },
@@ -151,10 +164,13 @@ describe("the built package through the service", () => {
       { slug: "worship", day: "sunday", weeks: null },
     ]);
     expect(await db.first("events.bySlug", { slug: "none" })).toBeNull();
-    expect(await db.query("events.search")).toMatchObject([{ slug: "worship" }]);
+    expect(await db.query("events.search")).toMatchObject([
+      { slug: "worship" },
+    ]);
     expect(await db.query("events.search", { day: "monday" })).toEqual([]);
-    expect(await db.query("events.search", { day: null, slug: "worship" }))
-      .toMatchObject([{ slug: "worship" }]);
+    expect(
+      await db.query("events.search", { day: null, slug: "worship" }),
+    ).toMatchObject([{ slug: "worship" }]);
     const inserted = await db.first("events.insert", {
       slug: "study",
       title: "Study",
@@ -162,10 +178,20 @@ describe("the built package through the service", () => {
     });
     expect(inserted).toMatchObject({ created_at: expect.any(Date) });
     expect(await db.query("events.touch", { ids: [1, 2] })).toBe(2);
+    expect(await db.query("events.rename", { id: 1, title: "Worship" })).toBe(
+      1,
+    );
+    expect(await db.first("events.bySlug", { slug: "worship" })).toEqual({
+      id: 1,
+      title: "Worship",
+    });
     expect(await db.query("admin.staff.leaders")).toMatchObject([
       { leader: null },
       { leader: null },
     ]);
+    expect(
+      await db.first("events.insert", { slug: "undated", title: "Undated" }),
+    ).toMatchObject({ id: expect.any(Number) });
   });
 
   it("guards a query name", async () => {

@@ -112,6 +112,17 @@ export interface Described {
 export type Enums = Readonly<Record<string, readonly string[]>>;
 
 /**
+ * The columns of each table of the database after the migrations ran, in
+ * declaration order, with whether each takes null. A table is keyed by
+ * `schema.name`, and by its bare name when the search path finds it. What
+ * decides the nullability of a slot a query writes into a column.
+ */
+export type Columns = ReadonlyMap<
+  string,
+  readonly { readonly name: string; readonly nullable: boolean }[]
+>;
+
+/**
  * One file of the output.
  */
 export interface OutputFile {

@@ -83,8 +83,11 @@ lever:
 
 - A cast sets the type of a slot. A slot Postgres cannot type fails the
   build and asks for one.
-- A slot is required. A null argument matches nothing in SQL, so the type
-  does not allow one.
+- A slot is required unless its null has a meaning: the SQL handles it, as
+  the operand of `IS NULL`, an argument of `COALESCE`, or a side of
+  `IS DISTINCT FROM`; or the statement writes it into a column that takes
+  null. Such a slot is optional and takes `null`. A null anywhere else
+  matches nothing in SQL, so the type does not allow one.
 - An alias names a result column. Two columns with one name fail the build.
 - `ANY(:ids)` takes an array. `RETURNING` types a write.
 - A slot is a value, never an identifier. The SQL in the bundle is fixed at

@@ -1,6 +1,6 @@
 import type { PGlite } from "@electric-sql/pglite";
 
-import type { Described, Query } from "./types";
+import type { Columns, Described, Query } from "./types";
 
 import { createServer } from "node:net";
 
@@ -63,11 +63,13 @@ const admitsNull = (target: Target): boolean => {
  * database is served on a local port for the time of the call. SafeQL
  * describes each query through postgres.js and reports the nullability of
  * each column. The type of each slot and each column comes from the describe
- * of Postgres. The nullability of each slot comes from the parse tree: a
- * slot is nullable when the SQL handles its null.
+ * of Postgres. The nullability of each slot comes from the parse tree and
+ * the catalog: a slot is nullable when the SQL handles its null, or when
+ * the statement writes it into a column that takes null.
  *
  * @param client - The PGlite instance the migrations ran on.
  * @param queries - The queries to describe.
+ * @param columns - The columns of the tables of the database.
  * @returns The description of each query, by name.
  * @throws InvalidQueryError, with the error of Postgres as `cause`, when a
  *   query does not describe, or when two of its columns share a name.
@@ -75,6 +77,7 @@ const admitsNull = (target: Target): boolean => {
 export const describeQueries = async (
   client: PGlite,
   queries: readonly Query[],
+  columns: Columns,
 ): Promise<Map<string, Described>> => {
   const described = new Map<string, Described>();
   if (queries.length === 0) {
@@ -111,7 +114,7 @@ export const describeQueries = async (
       }
       const { stmt, output } = result.right;
       const targets = new Map(output?.value ?? []);
-      const nullable = await nullableParams(query.sql);
+      const nullable = await nullableParams(query.sql, columns);
       described.set(query.name, {
         params: stmt.types.map((type, index) => ({
           type,

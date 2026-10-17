@@ -89,6 +89,31 @@ is an error: a query names its slots.
 Every lever of a query is a SQL lever. A cast sets the type of a slot. An
 alias names a column. Two columns with one name fail the build.
 
+A slot is required unless its null has a meaning. The SQL gives it one when
+the slot is the operand of `IS NULL` or `IS NOT NULL`, an argument of
+`COALESCE`, or a side of `IS DISTINCT FROM` or `IS NOT DISTINCT FROM`,
+through any cast. The schema gives it one when an `INSERT`, an `UPDATE`, or
+an `ON CONFLICT DO UPDATE` writes the slot into a column without `NOT NULL`.
+Such a slot is an optional argument that also takes `null`, and an absent
+argument binds null. Any other slot is required: a null there matches
+nothing.
+
+```sql
+-- src/queries/events/search.sql
+SELECT id, slug, title
+FROM events
+WHERE (day = :day OR :day IS NULL)
+  AND slug = COALESCE(:slug, slug)
+ORDER BY id;
+```
+
+```sql
+-- src/queries/events/insert.sql: day has no NOT NULL, so :day takes null.
+INSERT INTO events (slug, title, day)
+VALUES (:slug, :title, :day)
+RETURNING id;
+```
+
 ## Build
 
 ```sh
@@ -100,7 +125,9 @@ migrations and the seeds in order. It reads the enums. Then it serves the
 database on a local port and describes each query through
 [SafeQL](https://safeql.dev): Postgres reports the type of each slot and
 each column, and SafeQL reports whether each column can be null, through
-outer joins, `COALESCE`, aggregates, CTEs, and views.
+outer joins, `COALESCE`, aggregates, CTEs, and views. The kit parses each
+query with [libpg-query](https://github.com/pganalyze/libpg-query-node) and
+reads the columns of the catalog to decide whether each slot can be null.
 
 A file that Postgres rejects fails the build with the file and the error of
 Postgres:

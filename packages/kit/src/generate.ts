@@ -4,6 +4,7 @@ import { pglite } from "@bezoar/pglite";
 import { PGlite } from "@electric-sql/pglite";
 
 import { apply } from "./apply";
+import { readColumns } from "./columns";
 import { readEnums } from "./enums";
 import { describeQueries } from "./describe";
 import { emit } from "./emit";
@@ -14,8 +15,8 @@ import { validate } from "./validate";
 /**
  * Generates the output of a project without writing it. The function
  * validates the config, reads the SQL, applies the migrations and the seeds
- * to a database in memory, reads the enums, describes each query, builds
- * the contract, and emits the files.
+ * to a database in memory, reads the enums and the columns, describes each
+ * query, builds the contract, and emits the files.
  *
  * @param config - The authored config.
  * @param root - The project root.
@@ -32,7 +33,8 @@ export const generate = async (
   try {
     await apply(executor, sources);
     const enums = await readEnums(executor);
-    const described = await describeQueries(client, sources.queries);
+    const columns = await readColumns(executor);
+    const described = await describeQueries(client, sources.queries, columns);
     const types = await readTypes(executor, described);
     const contract = define(sources.queries, described, types, enums);
     return {

@@ -34,6 +34,7 @@ describe("readQueries", () => {
       ["events.count", "src/queries/events/count.sql"],
       ["events.insert", "src/queries/events/insert.sql"],
       ["events.list", "src/queries/events/list.sql"],
+      ["events.rename", "src/queries/events/rename.sql"],
       ["events.search", "src/queries/events/search.sql"],
       ["events.touch", "src/queries/events/touch.sql"],
     ]);
