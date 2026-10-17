@@ -34,8 +34,8 @@ the module imports both.
 The module reads `runtimeConfig.bezoar`. An environment variable sets
 each member.
 
-| Member    | Variable                  | Meaning                                     |
-| --------- | ------------------------- | ------------------------------------------- |
+| Member    | Variable               | Meaning                                     |
+| --------- | ---------------------- | ------------------------------------------- |
 | `url`     | `NUXT_BEZOAR_URL`      | The connection string, for the `pg` driver  |
 | `dataDir` | `NUXT_BEZOAR_DATA_DIR` | The data directory, for the `pglite` driver |
 | `driver`  | `NUXT_BEZOAR_DRIVER`   | `pg` or `pglite`. Defaults to `pg`          |

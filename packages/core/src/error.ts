@@ -76,9 +76,7 @@ export class ReservedQueryError extends Error {
   readonly query: string;
 
   constructor(query: string) {
-    super(
-      `@bezoar/core: ${JSON.stringify(query)} is reserved by the service`,
-    );
+    super(`@bezoar/core: ${JSON.stringify(query)} is reserved by the service`);
     this.name = "ReservedQueryError";
     this.query = query;
   }
@@ -92,9 +90,7 @@ export class AmbiguousQueryError extends Error {
   readonly query: string;
 
   constructor(query: string) {
-    super(
-      `@bezoar/core: ${JSON.stringify(query)} is both a query and a group`,
-    );
+    super(`@bezoar/core: ${JSON.stringify(query)} is both a query and a group`);
     this.name = "AmbiguousQueryError";
     this.query = query;
   }

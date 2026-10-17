@@ -32,9 +32,9 @@ describe("defineConfig", () => {
 
 describe("loadConfig", () => {
   it("loads the default export of a TypeScript config", async () => {
-    await expect(
-      loadConfig(join(root, "bezoar.config.ts")),
-    ).resolves.toEqual({ outDir: ".output" });
+    await expect(loadConfig(join(root, "bezoar.config.ts"))).resolves.toEqual({
+      outDir: ".output",
+    });
   });
 
   it("throws when there is no file", async () => {
