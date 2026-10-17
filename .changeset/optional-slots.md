@@ -1,5 +1,5 @@
 ---
-"@bezoar/kit": minor
+"@bezoar/kit": patch
 ---
 
 A slot is nullable when its null has a meaning. The kit parses each query
