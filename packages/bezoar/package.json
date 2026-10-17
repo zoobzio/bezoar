@@ -1,6 +1,6 @@
 {
   "name": "bezoar",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Umbrella package for the bezoar runtime",
   "license": "MIT",
   "repository": {
