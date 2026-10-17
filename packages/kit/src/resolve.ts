@@ -30,8 +30,8 @@ export const readTypes = async (
 ): Promise<Map<number, string>> => {
   const oids = new Set<number>();
   for (const { params, columns } of described.values()) {
-    for (const oid of params) {
-      oids.add(oid);
+    for (const param of params) {
+      oids.add(param.type);
     }
     for (const column of columns) {
       oids.add(column.type);
@@ -90,11 +90,14 @@ export const define = (
     };
 
     statements[query.name] = {
-      slots: query.slots.map((name, index) => ({
-        name,
-        type: typeOf(`the slot :${name}`, description.params[index] ?? 0),
-        nullable: false,
-      })),
+      slots: query.slots.map((name, index) => {
+        const param = description.params[index];
+        return {
+          name,
+          type: typeOf(`the slot :${name}`, param?.type ?? 0),
+          nullable: param?.nullable ?? false,
+        };
+      }),
       columns: description.columns.map((column) => ({
         name: column.name,
         type: typeOf(`the column ${column.name}`, column.type),

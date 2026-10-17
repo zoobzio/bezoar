@@ -43,6 +43,16 @@ describe("the contract of the fixture", () => {
     ).toEqual(["text", "text", "event_day"]);
   });
 
+  it("makes a slot nullable when the SQL handles its null", () => {
+    expect(contract.queries["events.search"]?.slots).toEqual([
+      { name: "day", type: "event_day", nullable: true },
+      { name: "slug", type: "text", nullable: true },
+    ]);
+    expect(contract.queries["events.bySlug"]?.slots).toEqual([
+      { name: "slug", type: "text", nullable: false },
+    ]);
+  });
+
   it("types each column and takes its nullability from SafeQL", () => {
     expect(contract.queries["events.list"]?.columns).toEqual([
       { name: "id", type: "int4", nullable: false },
@@ -141,6 +151,10 @@ describe("the built package through the service", () => {
       { slug: "worship", day: "sunday", weeks: null },
     ]);
     expect(await db.first("events.bySlug", { slug: "none" })).toBeNull();
+    expect(await db.query("events.search")).toMatchObject([{ slug: "worship" }]);
+    expect(await db.query("events.search", { day: "monday" })).toEqual([]);
+    expect(await db.query("events.search", { day: null, slug: "worship" }))
+      .toMatchObject([{ slug: "worship" }]);
     const inserted = await db.first("events.insert", {
       slug: "study",
       title: "Study",

@@ -10,6 +10,7 @@ import postgres from "postgres";
 
 import { CACHE, DATABASE, HOST } from "./constant";
 import { InvalidQueryError } from "./error";
+import { nullableParams } from "./nullable";
 
 /**
  * What SafeQL answers a query with.
@@ -62,7 +63,8 @@ const admitsNull = (target: Target): boolean => {
  * database is served on a local port for the time of the call. SafeQL
  * describes each query through postgres.js and reports the nullability of
  * each column. The type of each slot and each column comes from the describe
- * of Postgres.
+ * of Postgres. The nullability of each slot comes from the parse tree: a
+ * slot is nullable when the SQL handles its null.
  *
  * @param client - The PGlite instance the migrations ran on.
  * @param queries - The queries to describe.
@@ -109,8 +111,12 @@ export const describeQueries = async (
       }
       const { stmt, output } = result.right;
       const targets = new Map(output?.value ?? []);
+      const nullable = await nullableParams(query.sql);
       described.set(query.name, {
-        params: stmt.types,
+        params: stmt.types.map((type, index) => ({
+          type,
+          nullable: nullable.has(index + 1),
+        })),
         columns: stmt.columns.map((column) => {
           const target = targets.get(column.name);
           return {

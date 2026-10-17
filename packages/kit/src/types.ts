@@ -89,11 +89,15 @@ export interface Sources {
 }
 
 /**
- * What Postgres and SafeQL say about one query: the type OID of each slot,
- * and the name, type OID, and nullability of each column.
+ * What Postgres, SafeQL, and the parse tree say about one query: the type
+ * OID and nullability of each slot, and the name, type OID, and nullability
+ * of each column.
  */
 export interface Described {
-  readonly params: readonly number[];
+  readonly params: readonly {
+    readonly type: number;
+    readonly nullable: boolean;
+  }[];
   readonly columns: readonly {
     readonly name: string;
     readonly type: number;
