@@ -1,0 +1,43 @@
+{
+  "name": "@bezoar/pg",
+  "version": "0.0.0",
+  "description": "A bezoar executor over node-postgres",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zoobzio/bezoar.git",
+    "directory": "packages/pg"
+  },
+  "type": "module",
+  "main": "./.dist/index.mjs",
+  "types": "./.dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./.dist/index.d.mts",
+      "import": "./.dist/index.mjs"
+    }
+  },
+  "files": [
+    ".dist"
+  ],
+  "scripts": {
+    "build": "obuild",
+    "stub": "obuild --stub",
+    "lint": "oxlint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@bezoar/core": "workspace:*",
+    "pg": "catalog:",
+    "postgres-array": "catalog:"
+  },
+  "devDependencies": {
+    "@bezoar/pglite": "workspace:*",
+    "@bezoar/schema": "workspace:*",
+    "@electric-sql/pglite": "catalog:",
+    "@electric-sql/pglite-socket": "catalog:",
+    "@types/node": "catalog:",
+    "@types/pg": "catalog:"
+  }
+}

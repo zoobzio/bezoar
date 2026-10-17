@@ -1,0 +1,51 @@
+{
+  "name": "@bezoar/nuxt",
+  "version": "0.0.0",
+  "description": "Nuxt module for bezoar: a typed database service for server routes, from a kit build",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zoobzio/bezoar.git",
+    "directory": "integrations/nuxt"
+  },
+  "type": "module",
+  "main": "./.dist/module.js",
+  "types": "./.dist/module.d.ts",
+  "exports": {
+    ".": {
+      "types": "./.dist/module.d.ts",
+      "import": "./.dist/module.js"
+    },
+    "./config": {
+      "types": "./.dist/config.d.ts",
+      "import": "./.dist/config.js"
+    },
+    "./constant": {
+      "types": "./.dist/constant.d.ts",
+      "import": "./.dist/constant.js"
+    }
+  },
+  "files": [
+    ".dist"
+  ],
+  "scripts": {
+    "build": "obuild",
+    "stub": "obuild --stub",
+    "lint": "oxlint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@bezoar/pg": "workspace:*",
+    "@bezoar/pglite": "workspace:*",
+    "@nuxt/kit": "catalog:",
+    "bezoar": "workspace:*",
+    "objectively": "catalog:"
+  },
+  "devDependencies": {
+    "@nuxt/nitro-server": "catalog:",
+    "@nuxt/schema": "catalog:",
+    "@types/node": "catalog:",
+    "nuxt": "catalog:"
+  }
+}

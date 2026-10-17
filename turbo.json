@@ -1,0 +1,33 @@
+{
+  "$schema": "https://turborepo.dev/schema.json",
+  "agentGuidance": false,
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".dist/**"]
+    },
+    "stub": {
+      "dependsOn": ["^stub"],
+      "cache": false
+    },
+    "typecheck": {
+      "dependsOn": ["build"]
+    },
+    "test": {
+      "dependsOn": ["build"]
+    },
+    "@bezoar/example-database#typecheck": {
+      "dependsOn": ["build", "^build"]
+    },
+    "@bezoar/example-database#test": {
+      "dependsOn": ["build", "^build"]
+    },
+    "@bezoar/example-nuxt#build": {
+      "dependsOn": ["^build"],
+      "outputs": [".output/**", ".nuxt/**"]
+    },
+    "@bezoar/example-nuxt#typecheck": {
+      "dependsOn": ["^build"]
+    }
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "name": "bezoar",
+  "version": "0.0.0",
+  "description": "Umbrella package for the bezoar runtime",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zoobzio/bezoar.git",
+    "directory": "packages/bezoar"
+  },
+  "type": "module",
+  "main": "./.dist/index.mjs",
+  "types": "./.dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./.dist/index.d.mts",
+      "import": "./.dist/index.mjs"
+    }
+  },
+  "files": [
+    ".dist"
+  ],
+  "scripts": {
+    "build": "obuild",
+    "stub": "obuild --stub",
+    "lint": "oxlint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@bezoar/core": "workspace:*",
+    "@bezoar/schema": "workspace:*"
+  }
+}

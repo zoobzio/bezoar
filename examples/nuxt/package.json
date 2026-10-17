@@ -1,0 +1,21 @@
+{
+  "name": "@bezoar/example-nuxt",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "preview": "nuxt preview",
+    "typecheck": "nuxt typecheck"
+  },
+  "dependencies": {
+    "@bezoar/example-database": "workspace:*",
+    "@bezoar/nuxt": "workspace:*",
+    "bezoar": "workspace:*",
+    "nuxt": "catalog:",
+    "vue": "catalog:"
+  },
+  "devDependencies": {
+    "vue-tsc": "catalog:"
+  }
+}

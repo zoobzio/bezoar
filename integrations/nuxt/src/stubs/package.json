@@ -1,0 +1,5 @@
+{
+  "name": "@bezoar/nuxt-stubs",
+  "private": true,
+  "description": "Marks the typecheck stubs as a package of their own, so a declaration that refers to a stub names the virtual module (`#imports`, `#bezoar/build`, `#bezoar/service`) rather than a path into this folder."
+}

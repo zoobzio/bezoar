@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "target": "esnext",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "types": ["node", "@nuxt/nitro-server"],
+    "paths": {
+      "#imports": ["./src/stubs/imports.d.ts"],
+      "#bezoar/build": ["./src/stubs/build.d.ts"],
+      "#bezoar/service": ["./src/stubs/service.d.ts"]
+    }
+  },
+  "include": ["src", "test"]
+}

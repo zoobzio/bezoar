@@ -1,0 +1,49 @@
+{
+  "name": "@bezoar/kit",
+  "version": "0.0.0",
+  "description": "Build kit: SQL in a hermetic Postgres to a typed contract",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zoobzio/bezoar.git",
+    "directory": "packages/kit"
+  },
+  "type": "module",
+  "main": "./.dist/index.mjs",
+  "types": "./.dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./.dist/index.d.mts",
+      "import": "./.dist/index.mjs"
+    }
+  },
+  "bin": {
+    "bezoar": "./bin/bezoar.mjs"
+  },
+  "files": [
+    ".dist",
+    "bin"
+  ],
+  "scripts": {
+    "build": "obuild",
+    "stub": "obuild --stub",
+    "lint": "oxlint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@bezoar/core": "workspace:*",
+    "@bezoar/pglite": "workspace:*",
+    "@bezoar/schema": "workspace:*",
+    "@electric-sql/pglite": "catalog:",
+    "@electric-sql/pglite-socket": "catalog:",
+    "@ts-safeql/generate": "catalog:",
+    "jiti": "catalog:",
+    "libpg-query": "catalog:",
+    "objectively": "catalog:",
+    "postgres": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:"
+  }
+}

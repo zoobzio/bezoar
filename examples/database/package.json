@@ -1,0 +1,38 @@
+{
+  "name": "@bezoar/example-database",
+  "private": true,
+  "type": "module",
+  "main": "./.dist/index.mjs",
+  "types": "./.dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./.dist/index.d.mts",
+      "import": "./.dist/index.mjs"
+    },
+    "./queries": {
+      "types": "./.dist/queries.d.mts",
+      "import": "./.dist/queries.mjs"
+    },
+    "./migrations": {
+      "types": "./.dist/migrations.d.mts",
+      "import": "./.dist/migrations.mjs"
+    },
+    "./seeds": {
+      "types": "./.dist/seeds.d.mts",
+      "import": "./.dist/seeds.mjs"
+    }
+  },
+  "scripts": {
+    "build": "bezoar build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@bezoar/kit": "workspace:*",
+    "@bezoar/schema": "workspace:*",
+    "@bezoar/testing": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
