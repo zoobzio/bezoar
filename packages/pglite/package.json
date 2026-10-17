@@ -1,6 +1,6 @@
 {
   "name": "@bezoar/pglite",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "A bezoar executor over PGlite",
   "license": "MIT",
   "repository": {

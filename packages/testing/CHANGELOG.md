@@ -1,5 +1,14 @@
 # @bezoar/testing
 
+## 0.0.3
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @bezoar/schema@0.0.3
+  - @bezoar/core@0.0.3
+  - @bezoar/pglite@0.0.3
+
 ## 0.0.2
 
 ### Patch Changes

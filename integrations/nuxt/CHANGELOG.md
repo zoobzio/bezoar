@@ -1,5 +1,14 @@
 # @bezoar/nuxt
 
+## 0.0.3
+
+### Patch Changes
+
+- Updated dependencies []:
+  - bezoar@0.0.3
+  - @bezoar/pglite@0.0.3
+  - @bezoar/pg@0.0.3
+
 ## 0.0.2
 
 ### Patch Changes
