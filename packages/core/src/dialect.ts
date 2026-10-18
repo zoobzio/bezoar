@@ -15,7 +15,7 @@ import {
 } from "kysely";
 
 /**
- * The error of a kysely feature the service does not take part in.
+ * The error of a feature of the builder the service does not take part in.
  */
 const unsupported = (what: string, instead: string): Error =>
   new Error(
@@ -23,7 +23,7 @@ const unsupported = (what: string, instead: string): Error =>
   );
 
 /**
- * A connection for kysely over an executor. `executeQuery` runs the compiled
+ * A connection for the builder over an executor. `executeQuery` runs the compiled
  * SQL with its parameters through the executor and answers with the rows and
  * the count. The connection reads the executor on each query, as the service
  * does, so a caller can replace it. A stream is not supported.
@@ -42,9 +42,9 @@ const defineConnection = (executor: () => Executor): DatabaseConnection => ({
 });
 
 /**
- * A driver for kysely over an executor. The driver has one connection and
- * nothing to open or close: the executor owns the connection. A transaction
- * of kysely is refused. The executor opens a transaction as a callback, and
+ * A driver for the builder over an executor. The driver has one connection
+ * and nothing to open or close: the executor owns the connection. A
+ * transaction of the builder is refused. The executor opens a transaction as a callback, and
  * the service of a transaction builds on its executor, so a transaction
  * belongs to `db.transaction`.
  */
@@ -52,7 +52,7 @@ const defineDriver = (executor: () => Executor): Driver => {
   const connection = defineConnection(executor);
   const refuse = async (): Promise<void> => {
     throw unsupported(
-      "a kysely transaction",
+      "a transaction of the builder",
       "run `db.transaction((tx) => ...)` and build the query on `tx`",
     );
   };
@@ -68,9 +68,9 @@ const defineDriver = (executor: () => Executor): Driver => {
 };
 
 /**
- * The kysely dialect of a service: the Postgres compiler, adapter, and
- * introspector of kysely, over a driver that runs each compiled query on the
- * executor of the service.
+ * The dialect of the builder of a service: the Postgres compiler, adapter,
+ * and introspector of kysely, over a driver that runs each compiled query
+ * on the executor of the service.
  *
  * @param executor - Reads the executor to run on. Read on each query.
  */

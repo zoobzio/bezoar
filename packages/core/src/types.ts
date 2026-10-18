@@ -167,12 +167,12 @@ export interface Validator<R> {
 
 /**
  * Runs a built query: one made with the builder members of the service, or
- * any kysely query that compiles. Without a validator, the rows come back as
- * kysely infers them, unproven. With one, each row is proven against it and
- * comes back as its output, and a row that does not fit is an
- * `InvalidRowError`. The output of the validator must fit the row kysely
- * infers, so a validator that disagrees with the query fails to compile.
- * `first` runs the query and takes its first row, or `null`.
+ * any query of the builder that compiles. Without a validator, the rows come
+ * back as the builder infers them, unproven. With one, each row is proven
+ * against it and comes back as its output, and a row that does not fit is
+ * an `InvalidRowError`. The output of the validator must fit the row the
+ * builder infers, so a validator that disagrees with the query fails to
+ * compile. `first` runs the query and takes its first row, or `null`.
  */
 export interface Execute {
   <O>(query: Compilable<O>): Promise<O[]>;
@@ -187,15 +187,15 @@ export interface Execute {
 }
 
 /**
- * The name of a member of kysely the service delegates.
+ * The name of a member of the builder the service delegates.
  */
 export type Delegated = (typeof DELEGATED)[number];
 
 /**
- * The builder members of a service: the delegated members of a kysely over
- * the {@link Database} of the contract. `db.selectFrom("events")` is
- * `db.kysely.selectFrom("events")`. A query built here runs on the executor
- * of the service when it executes.
+ * The builder members of a service: the delegated members of its builder, a
+ * [kysely](https://kysely.dev) over the {@link Database} of the contract.
+ * `db.selectFrom("events")` is `db.build.selectFrom("events")`. A query
+ * built here runs on the executor of the service when it executes.
  */
 export type Builder<D extends Definition> = Pick<
   Kysely<Database<D>>,
@@ -248,13 +248,14 @@ export interface Service<D extends Definition> {
   execute: Execute;
 
   /**
-   * The kysely of the service, over the executor of the container and typed
-   * by the tables of the contract. The builder members of the service come
-   * from it. Here for what they do not cover, such as `withSchema`. Its
-   * `transaction` is refused: a transaction belongs to `transaction` of the
-   * service, and the service of a transaction has its own kysely.
+   * The query builder of the service: a kysely over the executor of the
+   * container, typed by the tables of the contract. The builder members of
+   * the service come from it. Here for what they do not cover, such as
+   * `withSchema`. Its own `transaction` is refused: a transaction belongs
+   * to `transaction` of the service, and the service of a transaction has
+   * a builder of its own.
    */
-  kysely: Kysely<Database<D>>;
+  build: Kysely<Database<D>>;
 
   /**
    * Runs a function inside one transaction. The function receives a service
@@ -281,8 +282,8 @@ export interface Service<D extends Definition> {
 
 /**
  * A runtime database service over a contract. The service has its members,
- * the builder members of kysely, and, beside them, a function for every
- * query under its group. It never connects: the caller brings an executor
+ * the members of its builder, and, beside them, a function for every query
+ * under its group. It never connects: the caller brings an executor
  * from a driver package.
  */
 export type Bezoar<D extends Definition> = Service<D> & Builder<D> & Groups<D>;

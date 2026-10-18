@@ -87,8 +87,9 @@ const db = makeBezoar(contract, config, {
 ## The query builder
 
 A contract carries the tables and the views of the database, and the service
-carries a [kysely](https://kysely.dev) typed by them. The entry points of
-kysely are members of the service: `selectFrom`, `selectNoFrom`,
+carries a query builder typed by them: `build`, a
+[kysely](https://kysely.dev) over the executor of the service. Its entry
+points are members of the service: `selectFrom`, `selectNoFrom`,
 `insertInto`, `updateTable`, `deleteFrom`, `mergeInto`, `with`,
 `withRecursive`, `fn`, `case`, and `dynamic`. A query built from them runs
 on the executor of the service when it executes.
@@ -111,12 +112,12 @@ The tables type the builder. A column with a default or an identity is
 optional in an insert. A column that takes null also takes `null`. A view is
 read only. A column of a type the type table does not have is `unknown`.
 
-A query that runs through kysely returns its rows as kysely infers them, and
-no row is proven. `execute` runs a built query through the service instead:
-it reports the query through `onQuery`, and with a validator it proves each
-row and returns the output of the validator. Any zod schema is a validator.
-A validator whose output does not fit the row kysely infers fails to compile.
-`execute.first` takes the first row, or `null`.
+A query that runs through the builder returns its rows as the builder infers
+them, and no row is proven. `execute` runs a built query through the service
+instead: it reports the query through `onQuery`, and with a validator it
+proves each row and returns the output of the validator. Any zod schema is a
+validator. A validator whose output does not fit the row the builder infers
+fails to compile. `execute.first` takes the first row, or `null`.
 
 ```ts
 const rows = await db.execute(
@@ -127,13 +128,13 @@ const one = await db.execute.first(query, schema);
 ```
 
 A row that does not fit the validator is an `InvalidRowError`, and a driver
-failure is a `QueryError`, each with the query name `"kysely"`. The report
+failure is a `QueryError`, each with the query name `"build"`. The report
 of a built query carries the same name, the compiled SQL, and the parameters
 as the arguments.
 
-`db.kysely` is the kysely instance, for what the members do not cover, such
+`db.build` is the builder itself, for what the members do not cover, such
 as `withSchema`. Its own `transaction` is refused: a transaction belongs to
-`transaction` of the service, and the service of a transaction has a kysely
+`transaction` of the service, and the service of a transaction has a builder
 of its own.
 
 ## Transactions
@@ -187,7 +188,7 @@ tracked. Write a seed so that it can run again. A seed that fails is a
 ## Names
 
 The members of the service are `config`, `schema`, `query`, `first`,
-`execute`, `kysely`, `transaction`, `migrate`, and `seed`, and the members
+`execute`, `build`, `transaction`, `migrate`, and `seed`, and the members
 of the builder listed above. A query group cannot take one of these names,
 and a name cannot be both a query and a group. Either is an error at
 construction: `ReservedQueryError` or `AmbiguousQueryError`. `RESERVED`

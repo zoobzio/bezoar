@@ -30,12 +30,12 @@ const service = (
 };
 
 describe("the builder", () => {
-  it("delegates each entry point of kysely", () => {
+  it("delegates each entry point of the builder", () => {
     const { db } = service();
     for (const name of DELEGATED) {
       expect(db[name]).toBeDefined();
     }
-    expect(db.kysely).toBeInstanceOf(Kysely);
+    expect(db.build).toBeInstanceOf(Kysely);
     expect(typeof db.fn.count).toBe("function");
   });
 
@@ -216,7 +216,7 @@ describe("execute", () => {
     expect(onQuery.mock.calls[0]?.[0].ms).toBeGreaterThanOrEqual(0);
   });
 
-  it("does not report a query that runs through kysely directly", async () => {
+  it("does not report a query that runs through the builder directly", async () => {
     const onQuery = vi.fn();
     const executor = fake(() => ({ rows, count: 2 }));
     const db = makeBezoar(contract, { executor, queries }, { onQuery });

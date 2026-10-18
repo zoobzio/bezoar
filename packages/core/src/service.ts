@@ -70,19 +70,20 @@ const isGetter = (target: object, name: string): boolean => {
 };
 
 /**
- * The builder members of a kysely. A method is bound so it reads the kysely
- * it came from. A getter, such as `fn`, is read once: what it returns is a
- * module of its own, with members of its own, and is not bound.
+ * The delegated members of a builder. A method is bound so it reads the
+ * builder it came from. A getter, such as `fn`, is read once: what it
+ * returns is a module of its own, with members of its own, and is not
+ * bound.
  */
 const delegate = <D extends Definition>(
-  kysely: Kysely<Database<D>>,
+  builder: Kysely<Database<D>>,
 ): Builder<D> => {
   const members: Partial<Record<string, unknown>> = {};
   for (const name of DELEGATED) {
-    const member: unknown = kysely[name];
+    const member: unknown = builder[name];
     members[name] =
-      typeof member === "function" && !isGetter(kysely, name)
-        ? member.bind(kysely)
+      typeof member === "function" && !isGetter(builder, name)
+        ? member.bind(builder)
         : member;
   }
   return members as Builder<D>;
@@ -91,7 +92,7 @@ const delegate = <D extends Definition>(
 /**
  * Builds a {@link Bezoar} service over a container. A transaction builds
  * one over the executor of the transaction. The service inside a transaction
- * has the same surface as the one outside, with its own kysely over the
+ * has the same surface as the one outside, with its own builder over the
  * executor of the transaction.
  */
 export const defineService = <D extends Definition>(
@@ -198,12 +199,12 @@ export const defineService = <D extends Definition>(
     return row;
   }
 
-  const kysely = new Kysely<Database<D>>({
+  const builder = new Kysely<Database<D>>({
     dialect: defineDialect(() => config.executor),
   });
 
   /**
-   * Compiles a built query, runs it through the kysely of the service, and
+   * Compiles a built query, runs it through the builder of the service, and
    * reports it.
    *
    * @throws QueryError when the driver fails.
@@ -215,7 +216,7 @@ export const defineService = <D extends Definition>(
     const started = performance.now();
     let result: QueryResult<Raw>;
     try {
-      result = await kysely.executeQuery<Raw>(compiled);
+      result = await builder.executeQuery<Raw>(compiled);
     } catch (cause) {
       throw new QueryError(BUILT, cause);
     }
@@ -289,7 +290,7 @@ export const defineService = <D extends Definition>(
     first: take,
     // The untyped functions carry the typed signatures of Execute.
     execute: Object.assign(executeAll, { first: executeFirst }) as Execute,
-    kysely,
+    build: builder,
     transaction,
     migrate: (migrations) => migrate(config.executor, migrations),
     seed: (seeds) => seed(config.executor, seeds),
@@ -308,5 +309,5 @@ export const defineService = <D extends Definition>(
     },
   );
 
-  return Object.assign(service, delegate(kysely), groups);
+  return Object.assign(service, delegate(builder), groups);
 };

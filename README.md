@@ -77,8 +77,8 @@ rows are typed by the columns the query selects, and `first` takes the first
 row or `null`. A transaction hands over a handle with the same surface.
 
 The contract also carries the tables of the database, and the service
-carries a [kysely](https://kysely.dev) typed by them, for the query a SQL
-file cannot anticipate:
+carries a query builder typed by them, a [kysely](https://kysely.dev), for
+the query a SQL file cannot anticipate:
 
 ```ts
 const sunday = await db

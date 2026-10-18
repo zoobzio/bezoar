@@ -65,13 +65,13 @@ describe("defineDialect", () => {
     expect(other.calls).toHaveLength(1);
   });
 
-  it("refuses a transaction of kysely", async () => {
+  it("refuses a transaction of the builder", async () => {
     const { db, executor } = kyselyOver();
     await expect(
       db.transaction().execute(async (trx) => {
         await trx.selectFrom("events").selectAll().execute();
       }),
-    ).rejects.toThrow(/a kysely transaction is not supported/);
+    ).rejects.toThrow(/a transaction of the builder is not supported/);
     expect(executor.calls).toEqual([]);
   });
 
