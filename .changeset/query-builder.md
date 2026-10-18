@@ -1,7 +1,7 @@
 ---
-"@bezoar/schema": minor
-"@bezoar/kit": minor
-"@bezoar/core": minor
+"@bezoar/schema": patch
+"@bezoar/kit": patch
+"@bezoar/core": patch
 ---
 
 A query builder on the service. The contract carries the tables and the
