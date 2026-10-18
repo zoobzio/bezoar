@@ -1,24 +1,4 @@
 /**
- * The members of the builder the service delegates: the entry point of each
- * statement, the common table expressions, and the helpers. The service
- * picks these and no other, so the transaction of the builder or its schema
- * builder never shadows a member of the service.
- */
-export const DELEGATED = [
-  "selectFrom",
-  "selectNoFrom",
-  "insertInto",
-  "updateTable",
-  "deleteFrom",
-  "mergeInto",
-  "with",
-  "withRecursive",
-  "fn",
-  "case",
-  "dynamic",
-] as const;
-
-/**
  * The members of a service. A query group cannot take one of these names.
  */
 export const RESERVED = [
@@ -31,7 +11,6 @@ export const RESERVED = [
   "transaction",
   "migrate",
   "seed",
-  ...DELEGATED,
 ] as const;
 
 /**

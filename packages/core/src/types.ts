@@ -12,7 +12,7 @@ import type {
 } from "@bezoar/schema";
 import type { Compilable, Kysely } from "kysely";
 
-import type { BUILT, DELEGATED } from "./constant";
+import type { BUILT } from "./constant";
 
 /**
  * What a driver answers a query with. `rows` is each row as an object, by
@@ -166,8 +166,8 @@ export interface Validator<R> {
 }
 
 /**
- * Runs a built query: one made with the builder members of the service, or
- * any query of the builder that compiles. Without a validator, the rows come
+ * Runs a built query: one made with `build` of the service, or any query of
+ * the builder that compiles. Without a validator, the rows come
  * back as the builder infers them, unproven. With one, each row is proven
  * against it and comes back as its output, and a row that does not fit is
  * an `InvalidRowError`. The output of the validator must fit the row the
@@ -187,24 +187,8 @@ export interface Execute {
 }
 
 /**
- * The name of a member of the builder the service delegates.
- */
-export type Delegated = (typeof DELEGATED)[number];
-
-/**
- * The builder members of a service: the delegated members of its builder, a
- * [kysely](https://kysely.dev) over the {@link Database} of the contract.
- * `db.selectFrom("events")` is `db.build.selectFrom("events")`. A query
- * built here runs on the executor of the service when it executes.
- */
-export type Builder<D extends Definition> = Pick<
-  Kysely<Database<D>>,
-  Delegated
->;
-
-/**
- * The members of a service other than its queries and its builder. A query
- * group cannot take one of these names.
+ * The members of a service other than its queries. A query group cannot
+ * take one of these names.
  */
 export interface Service<D extends Definition> {
   /**
@@ -248,10 +232,10 @@ export interface Service<D extends Definition> {
   execute: Execute;
 
   /**
-   * The query builder of the service: a kysely over the executor of the
-   * container, typed by the tables of the contract. The builder members of
-   * the service come from it. Here for what they do not cover, such as
-   * `withSchema`. Its own `transaction` is refused: a transaction belongs
+   * The query builder of the service: a [kysely](https://kysely.dev) over
+   * the executor of the container, typed by the {@link Database} of the
+   * contract. A query built here runs on the executor of the service when
+   * it executes. Its own `transaction` is refused: a transaction belongs
    * to `transaction` of the service, and the service of a transaction has
    * a builder of its own.
    */
@@ -281,9 +265,8 @@ export interface Service<D extends Definition> {
 }
 
 /**
- * A runtime database service over a contract. The service has its members,
- * the members of its builder, and, beside them, a function for every query
- * under its group. It never connects: the caller brings an executor
- * from a driver package.
+ * A runtime database service over a contract. The service has its members
+ * and, beside them, a function for every query under its group. It never
+ * connects: the caller brings an executor from a driver package.
  */
-export type Bezoar<D extends Definition> = Service<D> & Builder<D> & Groups<D>;
+export type Bezoar<D extends Definition> = Service<D> & Groups<D>;

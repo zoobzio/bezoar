@@ -51,16 +51,16 @@ describe("defineGroups", () => {
     expect(() => groupsOf(named("migrate"))).toThrow(ReservedQueryError);
   });
 
-  it("reserves the members of the service and the builder", () => {
+  it("reserves each member of the service", () => {
     const reserved = new Set<string>(RESERVED);
-    for (const name of ["selectFrom.all", "with", "fn.count", "execute"]) {
+    for (const name of ["build.all", "build", "execute"]) {
       const definition = named(name);
       expect(() =>
         defineGroups(keys(definition.queries), reserved, method),
       ).toThrow(ReservedQueryError);
     }
     expect(() =>
-      defineGroups(keys(named("events.selectFrom").queries), reserved, method),
+      defineGroups(keys(named("events.build").queries), reserved, method),
     ).not.toThrow();
   });
 

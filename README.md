@@ -81,7 +81,7 @@ carries a query builder typed by them, a [kysely](https://kysely.dev), for
 the query a SQL file cannot anticipate:
 
 ```ts
-const sunday = await db
+const sunday = await db.build
   .selectFrom("events")
   .select(["id", "slug"])
   .where("day", "=", "sunday")

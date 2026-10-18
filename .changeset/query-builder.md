@@ -14,20 +14,18 @@ does not have is `unknown`, and does not fail the build.
 
 `Database<D>` of `@bezoar/schema` types the tables for
 [kysely](https://kysely.dev), and the service of `@bezoar/core` carries a
-query builder, `db.build`, a kysely over the executor of its container. Its
-entry points are members of the service: `db.selectFrom("events")`,
-`insertInto`, `updateTable`,
-`deleteFrom`, `mergeInto`, `with`, `withRecursive`, `fn`, `case`, and
-`dynamic`. A built query runs on the executor of the service, and on the
-executor of the transaction inside `db.transaction`. `db.execute(query,
-validator?)` runs a built query through the service, reports it through
+query builder, `db.build`, a kysely over the executor of its container. A
+query built on it, such as `db.build.selectFrom("events")`, runs on the
+executor of the service, and on the executor of the transaction inside
+`db.transaction`. `db.execute(query, validator?)` runs a built query
+through the service, reports it through
 `onQuery`, and with a validator, such as a zod schema, proves each row and
 returns the output. `db.execute.first` takes the first row or `null`. The
 report of `onQuery` gains the SQL of the query, and a built query reports
 under the name `"build"`. The own `transaction` of the builder is refused in
 favour of `db.transaction`.
 
-The new members are reserved, so a top-level query group named like one is
-a `ReservedQueryError`. `tables` is required on a definition: rebuild a
+`build` is reserved, so a top-level query group of that name is a
+`ReservedQueryError`. `tables` is required on a definition: rebuild a
 database package with this kit before the runtime of this release loads
 its contract.

@@ -70,7 +70,7 @@ export class InvalidRowError extends Error {
 
 /**
  * Raised at construction when a query group takes the name of a member of
- * the service, such as `migrate` or `selectFrom`.
+ * the service, such as `migrate` or `build`.
  */
 export class ReservedQueryError extends Error {
   readonly query: string;

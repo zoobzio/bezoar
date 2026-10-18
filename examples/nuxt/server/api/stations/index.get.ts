@@ -5,7 +5,7 @@
  */
 export default defineEventHandler(() => {
   const db = useBezoar();
-  return db
+  return db.build
     .selectFrom("stations")
     .leftJoin("routes", "routes.origin", "stations.code")
     .select((eb) => [

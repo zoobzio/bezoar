@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import type { Report } from "../src/types";
 
-import { BUILT, DELEGATED } from "../src/constant";
+import { BUILT } from "../src/constant";
 import { InvalidRowError, QueryError } from "../src/error";
 import { makeBezoar } from "../src/factory";
 import { contract, fake, queries } from "./fixture";
@@ -30,18 +30,17 @@ const service = (
 };
 
 describe("the builder", () => {
-  it("delegates each entry point of the builder", () => {
+  it("is a kysely over the tables of the contract", () => {
     const { db } = service();
-    for (const name of DELEGATED) {
-      expect(db[name]).toBeDefined();
-    }
     expect(db.build).toBeInstanceOf(Kysely);
-    expect(typeof db.fn.count).toBe("function");
+    expect(typeof db.build.fn.count).toBe("function");
+    // @ts-expect-error The entry points are not members of the service.
+    expect(db.selectFrom).toBeUndefined();
   });
 
   it("builds a select typed by the tables of the contract", async () => {
     const { db, executor } = service();
-    const found = await db
+    const found = await db.build
       .selectFrom("events")
       .select(["id", "title"])
       .where("day", "=", "sunday")
@@ -54,14 +53,14 @@ describe("the builder", () => {
       params: ["sunday"],
     });
     // @ts-expect-error The label is not one of the enum.
-    void db.selectFrom("events").where("day", "=", "someday");
+    void db.build.selectFrom("events").where("day", "=", "someday");
     // @ts-expect-error The table is not one of the contract.
-    void db.selectFrom("sermons");
+    void db.build.selectFrom("sermons");
   });
 
   it("builds an insert with the generated columns optional", async () => {
     const { db, executor } = service([{ id: 3 }], 1);
-    const inserted = await db
+    const inserted = await db.build
       .insertInto("events")
       .values({ slug: "study", title: "Study", day: null })
       .returning("id")
@@ -73,12 +72,12 @@ describe("the builder", () => {
       params: ["study", "Study", null],
     });
     // @ts-expect-error A title is required.
-    void db.insertInto("events").values({ slug: "x" });
+    void db.build.insertInto("events").values({ slug: "x" });
   });
 
   it("reads a view, which has no column to insert or update", async () => {
     const { db } = service([{ id: 1, day: "sunday" }]);
-    const found = await db.selectFrom("dated").selectAll().execute();
+    const found = await db.build.selectFrom("dated").selectAll().execute();
     expectTypeOf(found).toEqualTypeOf<
       { id: number; day: "sunday" | "monday" | "tuesday" }[]
     >();
@@ -89,7 +88,7 @@ describe("the builder", () => {
 
   it("builds a common table expression and a function", async () => {
     const { db, executor } = service([{ total: 2 }]);
-    await db
+    await db.build
       .with("recent", (qb) =>
         qb.selectFrom("events").select("id").where("archived", "=", false),
       )
@@ -104,7 +103,7 @@ describe("the builder", () => {
   it("runs inside a transaction of the service", async () => {
     const { db, executor } = service();
     await db.transaction(async (tx) => {
-      await tx.selectFrom("events").selectAll().execute();
+      await tx.build.selectFrom("events").selectAll().execute();
       await tx.events.insert({ title: "New" });
     });
     expect(executor.calls.map((call) => call.depth)).toEqual([1, 1]);
@@ -115,7 +114,7 @@ describe("the builder", () => {
     const { db } = service();
     const other = fake(() => ({ rows: [{ id: 9, title: "x" }], count: 1 }));
     db.config.executor = other;
-    expect(await db.selectFrom("events").selectAll().execute()).toEqual([
+    expect(await db.build.selectFrom("events").selectAll().execute()).toEqual([
       { id: 9, title: "x" },
     ]);
     expect(other.calls).toHaveLength(1);
@@ -127,7 +126,7 @@ describe("execute", () => {
 
   it("returns the rows of a built query, unproven without a validator", async () => {
     const { db, executor } = service([{ id: "1", title: "Worship" }]);
-    const query = db.selectFrom("events").select(["id", "title"]);
+    const query = db.build.selectFrom("events").select(["id", "title"]);
     const found = await db.execute(query);
     expect(found).toEqual([{ id: "1", title: "Worship" }]);
     expectTypeOf(found).toEqualTypeOf<{ id: number; title: string }[]>();
@@ -136,7 +135,7 @@ describe("execute", () => {
 
   it("proves each row against a validator and returns its output", async () => {
     const { db } = service();
-    const query = db.selectFrom("events").select(["id", "title"]);
+    const query = db.build.selectFrom("events").select(["id", "title"]);
     const found = await db.execute(query, spec);
     expect(found).toEqual(rows);
     expectTypeOf(found).toEqualTypeOf<{ id: number; title: string }[]>();
@@ -145,7 +144,7 @@ describe("execute", () => {
   it("rejects a row that does not fit the validator", async () => {
     const { db } = service([rows[0]!, { id: "2", title: "Study" }]);
     const failing = db.execute(
-      db.selectFrom("events").select(["id", "title"]),
+      db.build.selectFrom("events").select(["id", "title"]),
       spec,
     );
     await expect(failing).rejects.toThrow(InvalidRowError);
@@ -154,7 +153,7 @@ describe("execute", () => {
 
   it("refuses a validator that disagrees with the query", () => {
     const { db } = service();
-    const query = db.selectFrom("events").select(["id", "title"]);
+    const query = db.build.selectFrom("events").select(["id", "title"]);
     const refused = [
       // @ts-expect-error The validator types id as a string.
       db.execute(query, z.object({ id: z.string(), title: z.string() })),
@@ -169,7 +168,7 @@ describe("execute", () => {
 
   it("takes the first row, or null", async () => {
     const { db } = service();
-    const query = db.selectFrom("events").select(["id", "title"]);
+    const query = db.build.selectFrom("events").select(["id", "title"]);
     const first = await db.execute.first(query, spec);
     expect(first).toEqual(rows[0]);
     expectTypeOf(first).toEqualTypeOf<{ id: number; title: string } | null>();
@@ -181,7 +180,7 @@ describe("execute", () => {
 
   it("proves the first row and no other", async () => {
     const { db } = service([rows[0]!, { id: "bad", title: 2 }]);
-    const query = db.selectFrom("events").select(["id", "title"]);
+    const query = db.build.selectFrom("events").select(["id", "title"]);
     expect(await db.execute.first(query, spec)).toEqual(rows[0]);
     await expect(db.execute(query, spec)).rejects.toMatchObject({ index: 1 });
   });
@@ -191,7 +190,7 @@ describe("execute", () => {
       throw new Error("connection lost");
     });
     const db = makeBezoar(contract, { executor, queries });
-    const failing = db.execute(db.selectFrom("events").selectAll());
+    const failing = db.execute(db.build.selectFrom("events").selectAll());
     await expect(failing).rejects.toThrow(QueryError);
     await expect(failing).rejects.toMatchObject({
       query: BUILT,
@@ -204,7 +203,7 @@ describe("execute", () => {
     const executor = fake(() => ({ rows, count: 2 }));
     const db = makeBezoar(contract, { executor, queries }, { onQuery });
     await db.execute(
-      db.selectFrom("events").select("id").where("title", "=", "Worship"),
+      db.build.selectFrom("events").select("id").where("title", "=", "Worship"),
     );
     expect(onQuery).toHaveBeenCalledOnce();
     expect(onQuery.mock.calls[0]?.[0]).toMatchObject({
@@ -220,7 +219,7 @@ describe("execute", () => {
     const onQuery = vi.fn();
     const executor = fake(() => ({ rows, count: 2 }));
     const db = makeBezoar(contract, { executor, queries }, { onQuery });
-    await db.selectFrom("events").selectAll().execute();
+    await db.build.selectFrom("events").selectAll().execute();
     expect(onQuery).not.toHaveBeenCalled();
   });
 });

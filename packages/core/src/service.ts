@@ -13,7 +13,6 @@ import type { Compilable, QueryResult } from "kysely";
 import type {
   Args,
   Bezoar,
-  Builder,
   Config,
   Execute,
   Executor,
@@ -26,7 +25,7 @@ import type {
 import { Kysely } from "kysely";
 import { keys } from "objectively";
 
-import { BUILT, DELEGATED, RESERVED } from "./constant";
+import { BUILT, RESERVED } from "./constant";
 import { defineDialect } from "./dialect";
 import {
   InvalidArgumentsError,
@@ -50,44 +49,6 @@ const bind = (
  * A row as the driver returns it.
  */
 type Raw = Record<string, unknown>;
-
-/**
- * Whether a member of an object is a getter somewhere on its prototype
- * chain.
- */
-const isGetter = (target: object, name: string): boolean => {
-  for (
-    let prototype: unknown = Object.getPrototypeOf(target);
-    prototype !== null && prototype !== undefined;
-    prototype = Object.getPrototypeOf(prototype)
-  ) {
-    const descriptor = Object.getOwnPropertyDescriptor(prototype, name);
-    if (descriptor !== undefined) {
-      return typeof descriptor.get === "function";
-    }
-  }
-  return false;
-};
-
-/**
- * The delegated members of a builder. A method is bound so it reads the
- * builder it came from. A getter, such as `fn`, is read once: what it
- * returns is a module of its own, with members of its own, and is not
- * bound.
- */
-const delegate = <D extends Definition>(
-  builder: Kysely<Database<D>>,
-): Builder<D> => {
-  const members: Partial<Record<string, unknown>> = {};
-  for (const name of DELEGATED) {
-    const member: unknown = builder[name];
-    members[name] =
-      typeof member === "function" && !isGetter(builder, name)
-        ? member.bind(builder)
-        : member;
-  }
-  return members as Builder<D>;
-};
 
 /**
  * Builds a {@link Bezoar} service over a container. A transaction builds
@@ -309,5 +270,5 @@ export const defineService = <D extends Definition>(
     },
   );
 
-  return Object.assign(service, delegate(builder), groups);
+  return Object.assign(service, groups);
 };

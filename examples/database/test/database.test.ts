@@ -90,7 +90,7 @@ describe("the Solstice Rail database", () => {
 
 describe("the query builder over the database", () => {
   it("builds a query over the tables of the contract", async () => {
-    const stations = await db
+    const stations = await db.build
       .selectFrom("stations")
       .select(["code", "name"])
       .where("country", "=", "SE")
@@ -99,9 +99,9 @@ describe("the query builder over the database", () => {
     expect(stations).toEqual([{ code: "STO", name: "Stockholm Central" }]);
   });
 
-  it("joins and aggregates with the helpers of kysely", async () => {
+  it("joins and aggregates with the helpers of the builder", async () => {
     const seats = await db.execute(
-      db
+      db.build
         .selectFrom("departures")
         .innerJoin("routes", "routes.id", "departures.route_id")
         .select((eb) => [
@@ -119,7 +119,7 @@ describe("the query builder over the database", () => {
   it("writes inside a transaction of the service and rolls back with it", async () => {
     await expect(
       db.transaction(async (tx) => {
-        await tx
+        await tx.build
           .insertInto("stations")
           .values({
             code: "OSL",
@@ -129,7 +129,7 @@ describe("the query builder over the database", () => {
           })
           .execute();
         const count = await tx.execute.first(
-          tx
+          tx.build
             .selectFrom("stations")
             .select((eb) => eb.fn.countAll().as("total")),
           z.object({ total: z.coerce.number() }),
