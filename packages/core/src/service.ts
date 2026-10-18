@@ -14,7 +14,6 @@ import type {
   Args,
   Bezoar,
   Config,
-  Execute,
   Executor,
   Options,
   Outcome,
@@ -211,33 +210,44 @@ export const defineService = <D extends Definition>(
 
   /**
    * Runs a built query and returns its rows, each proven when a validator
-   * is given. The typed signatures are on {@link Execute}.
+   * is given. The signatures are those of `Execute`.
    */
-  const executeAll = async (
+  async function executeAll<O>(query: Compilable<O>): Promise<O[]>;
+  async function executeAll<O, R extends O>(
+    query: Compilable<O>,
+    row: Validator<R>,
+  ): Promise<R[]>;
+  async function executeAll(
     query: Compilable<unknown>,
     validator?: Validator<unknown>,
-  ): Promise<unknown[]> => {
+  ): Promise<unknown[]> {
     const { rows } = await built(query);
     return validator === undefined
       ? rows
       : rows.map((row, index) => proveWith(validator, index, row));
-  };
+  }
 
   /**
    * Runs a built query and returns its first row, proven when a validator
-   * is given, or `null` when it has none.
+   * is given, or `null` when it has none. The signatures are those of
+   * `Execute`.
    */
-  const executeFirst = async (
+  async function executeFirst<O>(query: Compilable<O>): Promise<O | null>;
+  async function executeFirst<O, R extends O>(
+    query: Compilable<O>,
+    row: Validator<R>,
+  ): Promise<R | null>;
+  async function executeFirst(
     query: Compilable<unknown>,
     validator?: Validator<unknown>,
-  ): Promise<unknown> => {
+  ): Promise<unknown> {
     const { rows } = await built(query);
     const row = rows[0];
     if (row === undefined) {
       return null;
     }
     return validator === undefined ? row : proveWith(validator, 0, row);
-  };
+  }
 
   const transaction = <T>(fn: (tx: Bezoar<D>) => Promise<T>): Promise<T> =>
     config.executor.transaction((executor: Executor) =>
@@ -249,8 +259,7 @@ export const defineService = <D extends Definition>(
     schema,
     query: run,
     first: take,
-    // The untyped functions carry the typed signatures of Execute.
-    execute: Object.assign(executeAll, { first: executeFirst }) as Execute,
+    execute: Object.assign(executeAll, { first: executeFirst }),
     build: builder,
     transaction,
     migrate: (migrations) => migrate(config.executor, migrations),
