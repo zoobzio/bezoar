@@ -32,7 +32,9 @@
     "@bezoar/schema": "workspace:*",
     "@bezoar/testing": "workspace:*",
     "@types/node": "catalog:",
+    "kysely": "catalog:",
     "typescript": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "zod": "catalog:"
   }
 }

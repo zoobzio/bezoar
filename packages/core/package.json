@@ -29,6 +29,10 @@
   },
   "dependencies": {
     "@bezoar/schema": "workspace:*",
+    "kysely": "catalog:",
     "objectively": "catalog:"
+  },
+  "devDependencies": {
+    "zod": "catalog:"
   }
 }

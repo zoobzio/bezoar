@@ -7,7 +7,7 @@ import { pg } from "@bezoar/pg";
 import { pglite } from "@bezoar/pglite";
 import { makeBezoar } from "bezoar";
 
-export type { Arguments, Query, Row } from "bezoar";
+export type { Arguments, Database, Query, Row } from "bezoar";
 
 /**
  * An executor the service can close.

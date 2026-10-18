@@ -101,6 +101,7 @@ export const contract = {
       columns: [{ name: "total", type: "int8", nullable: false }],
     },
   },
+  tables: {},
 } as const satisfies Definition;
 
 /** The SQL of each query. */

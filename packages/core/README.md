@@ -1,8 +1,9 @@
 # @bezoar/core
 
 The runtime service of bezoar. The service runs the queries of a contract
-by name, proves the arguments and the rows against the contract, and applies
-migrations and seeds.
+by name, proves the arguments and the rows against the contract, builds
+dynamic queries with [kysely](https://kysely.dev) over the tables of the
+contract, and applies migrations and seeds.
 
 [`@bezoar/schema`](../schema) has the contract types and the validation.
 A driver package provides the connection.
@@ -75,7 +76,7 @@ error as `cause`. For `one` and `many`, each row is proven against the
 columns, and a row that does not fit is an `InvalidRowError` with its index.
 
 The `onQuery` option receives a report after each call: the query name, the
-arguments, the time in milliseconds, and the count of the outcome.
+SQL, the arguments, the time in milliseconds, and the count of the outcome.
 
 ```ts
 const db = makeBezoar(contract, config, {
@@ -83,15 +84,69 @@ const db = makeBezoar(contract, config, {
 });
 ```
 
+## The query builder
+
+A contract carries the tables and the views of the database, and the service
+carries a query builder typed by them: `build`, a
+[kysely](https://kysely.dev) over the executor of the service. A query built
+on it runs on that executor when it executes.
+
+```ts
+const upcoming = await db.build
+  .selectFrom("events")
+  .select(["id", "slug", "title"])
+  .where("day", "=", "sunday")
+  .orderBy("start_time")
+  .execute();
+
+await db.build
+  .insertInto("events")
+  .values({ slug: "prayer", title: "Prayer" })
+  .execute();
+```
+
+The tables type the builder. A column with a default or an identity is
+optional in an insert. A column that takes null also takes `null`. A view is
+read only. A column of a type the type table does not have is `unknown`.
+
+A query that runs through the builder returns its rows as the builder infers
+them, and no row is proven. `execute` runs a built query through the service
+instead: it reports the query through `onQuery`, and with a validator it
+proves each row and returns the output of the validator. Any zod schema is a
+validator. A validator whose output does not fit the row the builder infers
+fails to compile. `execute.first` takes the first row, or `null`.
+
+```ts
+const rows = await db.execute(
+  db.build.selectFrom("events").select(["id", "slug"]),
+  z.object({ id: z.int(), slug: z.string() }),
+);
+const one = await db.execute.first(query, schema);
+```
+
+A row that does not fit the validator is an `InvalidRowError`, and a driver
+failure is a `QueryError`, each with the query name `"build"`. The report
+of a built query carries the same name, the compiled SQL, and the parameters
+as the arguments.
+
+The own `transaction` of the builder is refused: a transaction belongs to
+`transaction` of the service, and the service of a transaction has a builder
+of its own.
+
 ## Transactions
 
 `transaction` runs a function with a service over one transaction. The
-service has the same queries and options.
+service has the same queries, a builder over the transaction, and the same
+options.
 
 ```ts
 await db.transaction(async (tx) => {
   await tx.events.insert({ slug: "prayer", title: "Prayer Meeting" });
-  await tx.events.archive({ ids: [3, 4] });
+  await tx
+    .updateTable("events")
+    .set({ archived: true })
+    .where("id", "in", [3, 4])
+    .execute();
 });
 ```
 
@@ -129,16 +184,19 @@ tracked. Write a seed so that it can run again. A seed that fails is a
 
 ## Names
 
-The members of the service are `config`, `schema`, `query`, `transaction`,
-`migrate`, and `seed`. A query group cannot take one of these names, and a
-name cannot be both a query and a group. Either is an error at
-construction: `ReservedQueryError` or `AmbiguousQueryError`.
+The members of the service are `config`, `schema`, `query`, `first`,
+`execute`, `build`, `transaction`, `migrate`, and `seed`. A query group
+cannot take one of these names,
+and a name cannot be both a query and a group. Either is an error at
+construction: `ReservedQueryError` or `AmbiguousQueryError`. `RESERVED`
+exports the list.
 
 ## Errors
 
 - `InvalidBundleError`: the SQL bundle does not match the contract.
 - `InvalidArgumentsError`: the arguments of a call do not fit the slots.
-- `InvalidRowError`: a row does not fit the columns.
+- `InvalidRowError`: a row does not fit the columns, or the validator of a
+  built query.
 - `QueryError`: the driver failed. `cause` is the driver's error.
 - `MigrationDriftError`: the database holds a migration the list does not
   match.
@@ -149,11 +207,14 @@ construction: `ReservedQueryError` or `AmbiguousQueryError`.
 
 ## Types
 
-- `Bezoar<D>` is the service: `Service<D>` and the `Groups<D>`.
+- `Bezoar<D>` is the service: `Service<D>`, the `Builder<D>`, and the
+  `Groups<D>`.
 - `Config<D>` is the container. `Options<D>` has `onQuery`.
 - `Executor` and `Outcome` are what a driver provides.
 - `Method<D, Q>` is the function of one query. `Report<D>` is what `onQuery`
   receives.
+- `Execute` is the signature of `execute`. `Validator<R>` is what it proves
+  a row with. `Delegated` is the name of a builder member.
 - `Migration` and `Seed` are what the kit builds for the runner.
 
 ## Related

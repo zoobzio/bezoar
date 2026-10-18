@@ -6,10 +6,19 @@ export const RESERVED = [
   "schema",
   "query",
   "first",
+  "execute",
+  "build",
   "transaction",
   "migrate",
   "seed",
 ] as const;
+
+/**
+ * The query name a report carries for a built query: one that ran through
+ * the builder rather than the contract. The name of the builder member of
+ * the service. No query of a contract has this name, as it is reserved.
+ */
+export const BUILT = "build";
 
 /**
  * The table that records each applied migration: its version, its name, its

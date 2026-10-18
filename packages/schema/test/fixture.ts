@@ -5,7 +5,9 @@ import { record } from "objectively";
 /**
  * A definition for the test suites. The definition has one enum, queries
  * with and without columns, a nullable slot, a nullable column, an array
- * slot, an array column, and a column of each scalar family.
+ * slot, an array column, and a column of each scalar family. Its tables
+ * have a generated column, a nullable column, an enum column, an array
+ * column, a column of an unknown type, and a view.
  */
 export const definition = {
   enums: {
@@ -64,6 +66,25 @@ export const definition = {
       ],
     },
   },
+  tables: {
+    events: {
+      kind: "table",
+      columns: [
+        { name: "id", type: "int4", nullable: false, generated: true },
+        { name: "slug", type: "text", nullable: false, generated: false },
+        { name: "day", type: "event_day", nullable: true, generated: false },
+        { name: "weeks", type: "int4[]", nullable: true, generated: false },
+        { name: "ip", type: "unknown", nullable: true, generated: false },
+      ],
+    },
+    upcoming: {
+      kind: "view",
+      columns: [
+        { name: "id", type: "int4", nullable: false, generated: false },
+        { name: "slug", type: "text", nullable: true, generated: false },
+      ],
+    },
+  },
 } as const satisfies Definition;
 
 /** A row of `events.list` that passes its validator. */
@@ -112,6 +133,10 @@ const memberOf = (
 /** The queries of an altered copy. */
 export const queriesOf = (copy: Record<string, unknown>) =>
   memberOf(copy, "queries");
+
+/** The tables of an altered copy. */
+export const tablesOf = (copy: Record<string, unknown>) =>
+  memberOf(copy, "tables");
 
 /** The statement of `events.list` in an altered copy. */
 export const listOf = (copy: Record<string, unknown>) =>

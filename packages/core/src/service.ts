@@ -1,4 +1,5 @@
 import type {
+  Database,
   Definition,
   Query,
   Returns,
@@ -7,6 +8,7 @@ import type {
   Schema,
   Slot,
 } from "@bezoar/schema";
+import type { Compilable, QueryResult } from "kysely";
 
 import type {
   Args,
@@ -16,11 +18,14 @@ import type {
   Options,
   Outcome,
   Service,
+  Validator,
 } from "./types";
 
+import { Kysely } from "kysely";
 import { keys } from "objectively";
 
-import { RESERVED } from "./constant";
+import { BUILT, RESERVED } from "./constant";
+import { defineDialect } from "./dialect";
 import {
   InvalidArgumentsError,
   InvalidRowError,
@@ -40,9 +45,15 @@ const bind = (
 ): unknown[] => slots.map((slot) => given[slot.name] ?? null);
 
 /**
+ * A row as the driver returns it.
+ */
+type Raw = Record<string, unknown>;
+
+/**
  * Builds a {@link Bezoar} service over a container. A transaction builds
  * one over the executor of the transaction. The service inside a transaction
- * has the same surface as the one outside.
+ * has the same surface as the one outside, with its own builder over the
+ * executor of the transaction.
  */
 export const defineService = <D extends Definition>(
   definition: D,
@@ -94,6 +105,7 @@ export const defineService = <D extends Definition>(
     const outcome = await execute(query, bind(statement.slots, given));
     options.onQuery?.({
       query,
+      sql: config.queries[query],
       arguments: args,
       ms: performance.now() - started,
       count: outcome.count,
@@ -147,6 +159,96 @@ export const defineService = <D extends Definition>(
     return row;
   }
 
+  const builder = new Kysely<Database<D>>({
+    dialect: defineDialect(() => config.executor),
+  });
+
+  /**
+   * Compiles a built query, runs it through the builder of the service, and
+   * reports it.
+   *
+   * @throws QueryError when the driver fails.
+   */
+  const built = async (
+    query: Compilable<unknown>,
+  ): Promise<QueryResult<Raw>> => {
+    const compiled = query.compile();
+    const started = performance.now();
+    let result: QueryResult<Raw>;
+    try {
+      result = await builder.executeQuery<Raw>(compiled);
+    } catch (cause) {
+      throw new QueryError(BUILT, cause);
+    }
+    options.onQuery?.({
+      query: BUILT,
+      sql: compiled.sql,
+      arguments: compiled.parameters,
+      ms: performance.now() - started,
+      count: Number(result.numAffectedRows ?? result.rows.length),
+    });
+    return result;
+  };
+
+  /**
+   * Proves a row of a built query against a validator and returns its
+   * output.
+   *
+   * @throws InvalidRowError when the row does not fit.
+   */
+  const proveWith = (
+    validator: Validator<unknown>,
+    index: number,
+    row: unknown,
+  ): unknown => {
+    const result = validator.safeParse(row);
+    if (!result.success) {
+      throw new InvalidRowError(BUILT, index, result.error.issues);
+    }
+    return result.data;
+  };
+
+  /**
+   * Runs a built query and returns its rows, each proven when a validator
+   * is given. The signatures are those of `Execute`.
+   */
+  async function executeAll<O>(query: Compilable<O>): Promise<O[]>;
+  async function executeAll<O, R extends O>(
+    query: Compilable<O>,
+    row: Validator<R>,
+  ): Promise<R[]>;
+  async function executeAll(
+    query: Compilable<unknown>,
+    validator?: Validator<unknown>,
+  ): Promise<unknown[]> {
+    const { rows } = await built(query);
+    return validator === undefined
+      ? rows
+      : rows.map((row, index) => proveWith(validator, index, row));
+  }
+
+  /**
+   * Runs a built query and returns its first row, proven when a validator
+   * is given, or `null` when it has none. The signatures are those of
+   * `Execute`.
+   */
+  async function executeFirst<O>(query: Compilable<O>): Promise<O | null>;
+  async function executeFirst<O, R extends O>(
+    query: Compilable<O>,
+    row: Validator<R>,
+  ): Promise<R | null>;
+  async function executeFirst(
+    query: Compilable<unknown>,
+    validator?: Validator<unknown>,
+  ): Promise<unknown> {
+    const { rows } = await built(query);
+    const row = rows[0];
+    if (row === undefined) {
+      return null;
+    }
+    return validator === undefined ? row : proveWith(validator, 0, row);
+  }
+
   const transaction = <T>(fn: (tx: Bezoar<D>) => Promise<T>): Promise<T> =>
     config.executor.transaction((executor: Executor) =>
       fn(defineService(definition, schema, { ...config, executor }, options)),
@@ -157,6 +259,8 @@ export const defineService = <D extends Definition>(
     schema,
     query: run,
     first: take,
+    execute: Object.assign(executeAll, { first: executeFirst }),
+    build: builder,
     transaction,
     migrate: (migrations) => migrate(config.executor, migrations),
     seed: (seeds) => seed(config.executor, seeds),

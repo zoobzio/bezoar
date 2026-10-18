@@ -64,9 +64,13 @@ export default defineEventHandler(async (event) => {
 
 `useBezoar()` is auto-imported on the server. It returns the same service
 on every call, typed by the contract of the build, so `db.events.list`
-completes, and its arguments and rows check. `AppBezoar`,
-`AppBezoarContract`, `AppBezoarQuery`, `AppBezoarArguments<Q>`, and
-`AppBezoarRow<Q>` are the types, also auto-imported.
+completes, and its arguments and rows check. The service carries the query
+builder of `@bezoar/core`, `db.build`, a [kysely](https://kysely.dev)
+typed by the tables of the build, so `db.build.selectFrom("events")`
+completes as well.
+`AppBezoar`, `AppBezoarContract`, `AppBezoarQuery`,
+`AppBezoarArguments<Q>`, `AppBezoarRow<Q>`, and `AppBezoarDatabase` are the
+types, also auto-imported.
 
 ## Startup and shutdown
 

@@ -33,9 +33,36 @@ export const SCALARS = [
 export const ARRAY = "[]";
 
 /**
+ * The type name of a table column whose type the type table does not have.
+ * A query column of such a type fails a build. A table column of one is
+ * `unknown`, so a table with one still builds.
+ */
+export const UNKNOWN = "unknown";
+
+/**
+ * The kinds of a table of a definition. A `view` is read and never written.
+ */
+export const TABLE_KINDS = ["table", "view"] as const;
+
+/**
  * The members of a definition.
  */
-export const DEFINITION_KEYS = ["enums", "queries"] as const;
+export const DEFINITION_KEYS = ["enums", "queries", "tables"] as const;
+
+/**
+ * The members of a table.
+ */
+export const TABLE_KEYS = ["kind", "columns"] as const;
+
+/**
+ * The members of a table column.
+ */
+export const TABLE_COLUMN_KEYS = [
+  "name",
+  "type",
+  "nullable",
+  "generated",
+] as const;
 
 /**
  * The members of a statement.

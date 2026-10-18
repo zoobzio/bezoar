@@ -1,5 +1,5 @@
 import type { Migration, Seed } from "@bezoar/core";
-import type { Definition } from "@bezoar/schema";
+import type { Definition, TableKind } from "@bezoar/schema";
 
 /**
  * The authored `bezoar.config.ts`: where the SQL lives and where the build
@@ -110,6 +110,25 @@ export interface Described {
  * its labels, in declaration order. What the contract carries as `enums`.
  */
 export type Enums = Readonly<Record<string, readonly string[]>>;
+
+/**
+ * A table or a view of the database after the migrations ran, as the kit
+ * read it: where it lives, whether the search path finds it, and its
+ * columns in declaration order, each with its type OID, whether it takes
+ * null, and whether the database can fill it.
+ */
+export interface Relation {
+  readonly schema: string;
+  readonly name: string;
+  readonly kind: TableKind;
+  readonly visible: boolean;
+  readonly columns: {
+    readonly name: string;
+    readonly type: number;
+    readonly nullable: boolean;
+    readonly generated: boolean;
+  }[];
+}
 
 /**
  * The columns of each table of the database after the migrations ran, in

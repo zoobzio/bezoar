@@ -1,5 +1,6 @@
 import { makeTestBezoar } from "@bezoar/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { z } from "zod";
 
 import { contract } from "../.dist/index.mjs";
 import { migrations } from "../.dist/migrations.mjs";
@@ -84,5 +85,59 @@ describe("the Solstice Rail database", () => {
       note: null,
     });
     expect(await db.departures.byId.first({ id: 9999 })).toBeNull();
+  });
+});
+
+describe("the query builder over the database", () => {
+  it("builds a query over the tables of the contract", async () => {
+    const stations = await db.build
+      .selectFrom("stations")
+      .select(["code", "name"])
+      .where("country", "=", "SE")
+      .orderBy("code")
+      .execute();
+    expect(stations).toEqual([{ code: "STO", name: "Stockholm Central" }]);
+  });
+
+  it("joins and aggregates with the helpers of the builder", async () => {
+    const seats = await db.execute(
+      db.build
+        .selectFrom("departures")
+        .innerJoin("routes", "routes.id", "departures.route_id")
+        .select((eb) => [
+          "routes.slug",
+          eb.fn.sum<number>("departures.seats").as("seats"),
+        ])
+        .groupBy("routes.slug")
+        .orderBy("routes.slug"),
+      z.object({ slug: z.string(), seats: z.coerce.number() }),
+    );
+    expect(seats[0]).toMatchObject({ slug: "berlin-stockholm" });
+    expect(seats.every((row) => row.seats > 0)).toBe(true);
+  });
+
+  it("writes inside a transaction of the service and rolls back with it", async () => {
+    await expect(
+      db.transaction(async (tx) => {
+        await tx.build
+          .insertInto("stations")
+          .values({
+            code: "OSL",
+            name: "Oslo S",
+            country: "Norway",
+            timezone: "Europe/Oslo",
+          })
+          .execute();
+        const count = await tx.execute.first(
+          tx.build
+            .selectFrom("stations")
+            .select((eb) => eb.fn.countAll().as("total")),
+          z.object({ total: z.coerce.number() }),
+        );
+        expect(count).toEqual({ total: 5 });
+        throw new Error("abort");
+      }),
+    ).rejects.toThrow("abort");
+    expect(await db.stations.list()).toHaveLength(4);
   });
 });

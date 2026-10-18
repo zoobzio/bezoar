@@ -1,12 +1,13 @@
 import type { Executor } from "@bezoar/core";
-import type { Definition, Statement } from "@bezoar/schema";
+import type { Definition, Statement, Table } from "@bezoar/schema";
 
-import type { Described, Enums, Query } from "./types";
+import type { Described, Enums, Query, Relation } from "./types";
 
-import { SCALARS } from "@bezoar/schema";
+import { SCALARS, UNKNOWN } from "@bezoar/schema";
 import { within } from "objectively";
 
 import { InvalidQueryError } from "./error";
+import { keyOf } from "./tables";
 
 /**
  * The name of each type of a set of OIDs. An array type names its element.
@@ -18,15 +19,17 @@ const TYPES = `
   WHERE t.oid = ANY($1::int[])`;
 
 /**
- * Reads the name of each type the descriptions refer to, by OID, in the
- * vocabulary of the contract: `int4`, `event_day`, `int4[]`.
+ * Reads the name of each type the descriptions and the relations refer to,
+ * by OID, in the vocabulary of the contract: `int4`, `event_day`, `int4[]`.
  *
  * @param executor - The hermetic database.
  * @param described - The descriptions of the queries.
+ * @param relations - The tables and the views of the database.
  */
 export const readTypes = async (
   executor: Executor,
   described: ReadonlyMap<string, Described>,
+  relations: readonly Relation[] = [],
 ): Promise<Map<number, string>> => {
   const oids = new Set<number>();
   for (const { params, columns } of described.values()) {
@@ -34,6 +37,11 @@ export const readTypes = async (
       oids.add(param.type);
     }
     for (const column of columns) {
+      oids.add(column.type);
+    }
+  }
+  for (const relation of relations) {
+    for (const column of relation.columns) {
       oids.add(column.type);
     }
   }
@@ -53,13 +61,26 @@ export const readTypes = async (
 };
 
 /**
- * Builds the contract of a build: the enums of the database, and a
- * statement for each query with its slots and columns typed.
+ * Whether a type name is in the vocabulary of the contract: a scalar of the
+ * type table or an enum of the database, or an array of one.
+ */
+const known = (name: string, enums: Enums): boolean => {
+  const base = name.endsWith("[]") ? name.slice(0, -2) : name;
+  return within(SCALARS, base) || base in enums;
+};
+
+/**
+ * Builds the contract of a build: the enums of the database, a statement
+ * for each query with its slots and columns typed, and a table for each
+ * table and view with its columns typed. A query column of a type the type
+ * table does not have fails the build. A table column of one is `unknown`,
+ * so a table a query never reads still builds.
  *
  * @param queries - The queries, as read.
  * @param described - The description of each query, by name.
  * @param types - The name of each type, by OID.
  * @param enums - The enums of the hermetic database.
+ * @param relations - The tables and the views of the hermetic database.
  * @throws InvalidQueryError when a slot or a column has a type that is not
  *   a scalar of the type table or an enum of the database.
  */
@@ -68,6 +89,7 @@ export const define = (
   described: ReadonlyMap<string, Described>,
   types: ReadonlyMap<number, string>,
   enums: Enums,
+  relations: readonly Relation[] = [],
 ): Definition => {
   const statements: Record<string, Statement> = {};
 
@@ -79,8 +101,7 @@ export const define = (
 
     const typeOf = (what: string, oid: number): string => {
       const name = types.get(oid) ?? String(oid);
-      const base = name.endsWith("[]") ? name.slice(0, -2) : name;
-      if (!within(SCALARS, base) && !(base in enums)) {
+      if (!known(name, enums)) {
         throw new InvalidQueryError(
           query.path,
           `${what} has the type ${name}, which the type table does not have`,
@@ -106,5 +127,21 @@ export const define = (
     };
   }
 
-  return { enums, queries: statements };
+  const tables: Record<string, Table> = {};
+  for (const relation of relations) {
+    tables[keyOf(relation)] = {
+      kind: relation.kind,
+      columns: relation.columns.map(({ name, type, nullable, generated }) => {
+        const resolved = types.get(type) ?? String(type);
+        return {
+          name,
+          type: known(resolved, enums) ? resolved : UNKNOWN,
+          nullable,
+          generated,
+        };
+      }),
+    };
+  }
+
+  return { enums, queries: statements, tables };
 };

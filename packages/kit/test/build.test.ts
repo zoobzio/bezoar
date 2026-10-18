@@ -75,6 +75,7 @@ describe("build", () => {
     expect(migrations.map((m: { version: string }) => m.version)).toEqual([
       "0001",
       "0002",
+      "0003",
     ]);
     const { seeds } = await import(join(root, ".output/seeds.mjs"));
     expect(seeds[0].name).toBe("events");

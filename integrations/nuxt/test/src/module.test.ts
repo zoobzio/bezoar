@@ -205,6 +205,7 @@ describe("bezoar module", () => {
       "AppBezoarQuery",
       "AppBezoarArguments",
       "AppBezoarRow",
+      "AppBezoarDatabase",
     ]);
   });
 });

@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { definition as schema } from "../src/definition";
-import { altered, definition, listOf, queriesOf } from "./fixture";
+import { altered, definition, listOf, queriesOf, tablesOf } from "./fixture";
+
+/** A definition with no enum, no query, and no table. */
+const empty = { enums: {}, queries: {}, tables: {} };
 
 /** The paths of every issue of a value, as dotted strings. */
 const paths = (value: unknown): string[] => {
@@ -16,8 +19,8 @@ describe("definition", () => {
     expect(schema.safeParse(definition).success).toBe(true);
   });
 
-  it("accepts a definition with no enum and no query", () => {
-    expect(schema.safeParse({ enums: {}, queries: {} }).success).toBe(true);
+  it("accepts a definition with no enum, no query, and no table", () => {
+    expect(schema.safeParse(empty).success).toBe(true);
   });
 
   it("rejects a value that is not an object", () => {
@@ -26,33 +29,31 @@ describe("definition", () => {
   });
 
   it("rejects an unknown or missing member", () => {
-    const stray = schema.safeParse({ enums: {}, queries: {}, tables: {} });
+    const stray = schema.safeParse({ ...empty, views: {} });
     expect(stray.success).toBe(false);
     if (!stray.success) {
       expect(stray.error.issues[0]?.code).toBe("unrecognized_keys");
     }
-    expect(paths({ enums: {} })).toEqual(["queries"]);
+    expect(paths({ enums: {} })).toEqual(["queries", "tables"]);
   });
 
   it("rejects an enum that is not a list of distinct labels", () => {
-    expect(paths({ enums: { mood: ["glad", "glad"] }, queries: {} })).toEqual([
+    expect(paths({ ...empty, enums: { mood: ["glad", "glad"] } })).toEqual([
       "enums.mood.1",
     ]);
-    expect(paths({ enums: { mood: "glad" }, queries: {} })).toEqual([
+    expect(paths({ ...empty, enums: { mood: "glad" } })).toEqual([
       "enums.mood",
     ]);
-    expect(paths({ enums: { mood: [""] }, queries: {} })).toEqual([
+    expect(paths({ ...empty, enums: { mood: [""] } })).toEqual([
       "enums.mood.0",
     ]);
   });
 
   it("rejects an enum name that is not an identifier or that a scalar uses", () => {
-    expect(paths({ enums: { "my-mood": [] }, queries: {} })).toEqual([
+    expect(paths({ ...empty, enums: { "my-mood": [] } })).toEqual([
       "enums.my-mood",
     ]);
-    expect(paths({ enums: { text: ["a"] }, queries: {} })).toEqual([
-      "enums.text",
-    ]);
+    expect(paths({ ...empty, enums: { text: ["a"] } })).toEqual(["enums.text"]);
   });
 
   it("rejects a query name that is not dotted identifiers", () => {
@@ -148,6 +149,75 @@ describe("definition", () => {
         }),
       ),
     ).toEqual(["queries.events.list.columns.1"]);
+  });
+
+  it("rejects a table with an extra or a missing member, or a kind it does not know", () => {
+    expect(
+      paths(
+        altered((copy) => {
+          tablesOf(copy).events = { kind: "table", columns: [], rows: 0 };
+        }),
+      ),
+    ).toEqual(["tables.events"]);
+    expect(
+      paths(
+        altered((copy) => {
+          tablesOf(copy).events = { columns: [] };
+        }),
+      ),
+    ).toEqual(["tables.events.kind"]);
+    expect(
+      paths(
+        altered((copy) => {
+          tablesOf(copy).events = { kind: "sequence", columns: [] };
+        }),
+      ),
+    ).toEqual(["tables.events.kind"]);
+  });
+
+  it("rejects a table column that is not complete", () => {
+    expect(
+      paths(
+        altered((copy) => {
+          tablesOf(copy).events = {
+            kind: "table",
+            columns: [{ name: "x", type: "int4", nullable: false }],
+          };
+        }),
+      ),
+    ).toEqual(["tables.events.columns.0.generated"]);
+  });
+
+  it("accepts a table column of an unknown type and rejects any other type it does not know", () => {
+    expect(paths(definition)).toEqual([]);
+    expect(
+      paths(
+        altered((copy) => {
+          tablesOf(copy).events = {
+            kind: "table",
+            columns: [
+              { name: "x", type: "money", nullable: false, generated: false },
+            ],
+          };
+        }),
+      ),
+    ).toEqual(["tables.events.columns.0.type"]);
+  });
+
+  it("rejects two table columns with one name", () => {
+    expect(
+      paths(
+        altered((copy) => {
+          tablesOf(copy).events = {
+            kind: "table",
+            columns: [
+              { name: "id", type: "int4", nullable: false, generated: true },
+              { name: "id", type: "int4", nullable: false, generated: false },
+            ],
+          };
+        }),
+      ),
+    ).toEqual(["tables.events.columns.1"]);
   });
 
   it("reports every issue of a pass", () => {

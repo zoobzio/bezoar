@@ -25,6 +25,13 @@ SQL of a database package. The definition is plain data and holds no SQL.
   position order: the slot at index `i` binds `$i+1`.
 - A **type** is a scalar of the type table, an enum of the definition, or
   either with the `[]` suffix.
+- **tables** maps each table and view of the database to its **columns**,
+  by its bare name when the search path finds it and by `schema.name`
+  otherwise. A table column has a `name`, a `type`, a `nullable` flag, and a
+  `generated` flag: whether the database can fill it, through a default, an
+  identity, or a generation expression. A table column of a type the type
+  table does not have is `unknown`. A table has a `kind`: `table`, or `view`
+  for one that is read and never written.
 
 ```ts
 const contract = {
@@ -42,6 +49,16 @@ const contract = {
       ],
     },
   },
+  tables: {
+    events: {
+      kind: "table",
+      columns: [
+        { name: "id", type: "int4", nullable: false, generated: true },
+        { name: "title", type: "text", nullable: false, generated: false },
+        { name: "weeks", type: "int4[]", nullable: true, generated: false },
+      ],
+    },
+  },
 } as const satisfies Definition;
 ```
 
@@ -56,7 +73,14 @@ Arguments<D, "events.list">; // { day: "sunday" | "monday" | …; location?: str
 Row<D, "events.list">; // { id: number; title: string; weeks: (number | null)[] | null }
 Returns<D, "events.list">; // Row<D, "events.list">[]
 Returns<D, "events.touch">; // number, for a query with no column
+Database<D>; // { events: { id: Generated<number>; title: string; weeks: (number | null)[] | null } }
 ```
+
+`Database<D>` is the type parameter of a [kysely](https://kysely.dev)
+`Kysely` over the tables of the definition. A generated column is
+`Generated`, so an insert can leave it out. A column of a view is a
+`ColumnType` that selects and never inserts or updates. `@bezoar/core`
+builds the query builder of a service over this type.
 
 ## The type table
 
@@ -149,8 +173,8 @@ schema.check.row("events.list", await res.json()); // true when the row fits the
 
 ## Types
 
-- `Definition` is the contract. `Statement`, `Slot`, and `Column` are its
-  parts.
+- `Definition` is the contract. `Statement`, `Slot`, `Column`, `Table`,
+  `TableColumn`, and `TableKind` are its parts.
 - `Query<D>`, `Enum<D>`, and `Label<D, E>` are names from a definition.
   `RowQuery<D>` is the name of a query with a column. `Type<D>` is a type
   name the definition can express.
@@ -159,6 +183,7 @@ schema.check.row("events.list", await res.json()); // true when the row fits the
 - `Arguments<D, Q>`, `Row<D, Q>`, and `Returns<D, Q>` are the shapes of a
   call of the query `Q`. `Returns` is the rows of a query with a column and
   the count of one without.
+- `Database<D>` is the tables of a definition as kysely types them.
 - `Bundle<D>` is the SQL bundle of a contract.
 - `Validators<D>` is the shape of the zod schemas.
 - `Schema<D>` is the bundle that `defineSchema` returns. `Check<D>`,

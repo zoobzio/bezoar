@@ -18,6 +18,7 @@ catalog:
   "@ts-safeql/generate": "5.4.1"
   "@vitest/coverage-v8": "^5.0.3"
   jiti: "^2.7.0"
+  kysely: "^0.29.7"
   libpg-query: "18.1.5"
   nuxt: "^4.5.0"
   objectively: "^0.3.0"
