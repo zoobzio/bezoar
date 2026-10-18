@@ -1,6 +1,6 @@
 {
   "name": "@bezoar/testing",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "A bezoar service over PGlite with the migrations and seeds of a build, for tests",
   "license": "MIT",
   "repository": {
