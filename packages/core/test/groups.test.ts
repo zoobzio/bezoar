@@ -3,6 +3,7 @@ import type { Definition, Statement } from "@bezoar/schema";
 import { collect, keys } from "objectively";
 import { describe, expect, it } from "vitest";
 
+import { RESERVED } from "../src/constant";
 import { AmbiguousQueryError, ReservedQueryError } from "../src/error";
 import { defineGroups } from "../src/groups";
 
@@ -14,6 +15,7 @@ const named = <N extends string>(...names: N[]) =>
   ({
     enums: {},
     queries: collect(names, (name) => [name, statement]),
+    tables: {},
   }) satisfies Definition;
 
 /** Makes a function that resolves to the name of its query. */
@@ -47,6 +49,19 @@ describe("defineGroups", () => {
   it("rejects a top-level name the service reserves", () => {
     expect(() => groupsOf(named("migrate.all"))).toThrow(ReservedQueryError);
     expect(() => groupsOf(named("migrate"))).toThrow(ReservedQueryError);
+  });
+
+  it("reserves the members of the service and the builder", () => {
+    const reserved = new Set<string>(RESERVED);
+    for (const name of ["selectFrom.all", "with", "fn.count", "execute"]) {
+      const definition = named(name);
+      expect(() =>
+        defineGroups(keys(definition.queries), reserved, method),
+      ).toThrow(ReservedQueryError);
+    }
+    expect(() =>
+      defineGroups(keys(named("events.selectFrom").queries), reserved, method),
+    ).not.toThrow();
   });
 
   it("rejects a name that is both a query and a group", () => {

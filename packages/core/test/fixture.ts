@@ -4,7 +4,8 @@ import type { Executor, Outcome } from "../src/types";
 
 /**
  * A contract for the test suites: an enum, queries with and without columns,
- * a nullable slot, and a nullable column.
+ * a nullable slot, a nullable column, and a table with a generated column, a
+ * nullable column, and an enum column, beside a view.
  */
 export const contract = {
   enums: {
@@ -40,6 +41,26 @@ export const contract = {
     "events.count": {
       slots: [],
       columns: [{ name: "total", type: "int8", nullable: false }],
+    },
+  },
+  tables: {
+    events: {
+      kind: "table",
+      columns: [
+        { name: "id", type: "int4", nullable: false, generated: true },
+        { name: "slug", type: "text", nullable: false, generated: false },
+        { name: "title", type: "text", nullable: false, generated: false },
+        { name: "day", type: "event_day", nullable: true, generated: false },
+        { name: "location", type: "text", nullable: true, generated: false },
+        { name: "archived", type: "bool", nullable: false, generated: true },
+      ],
+    },
+    dated: {
+      kind: "view",
+      columns: [
+        { name: "id", type: "int4", nullable: false, generated: false },
+        { name: "day", type: "event_day", nullable: false, generated: false },
+      ],
     },
   },
 } as const satisfies Definition;

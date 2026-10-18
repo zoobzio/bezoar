@@ -77,6 +77,7 @@ describe("defineValidators", () => {
       const none = defineValidators({
         enums: {},
         queries: { "a.b": { slots: [], columns: [] } },
+        tables: {},
       });
       expect(none.queries["a.b"].arguments.safeParse({}).success).toBe(true);
     });

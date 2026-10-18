@@ -4,12 +4,12 @@ import { pglite } from "@bezoar/pglite";
 import { PGlite } from "@electric-sql/pglite";
 
 import { apply } from "./apply";
-import { readColumns } from "./columns";
 import { readEnums } from "./enums";
 import { describeQueries } from "./describe";
 import { emit } from "./emit";
 import { readSources } from "./read";
 import { define, readTypes } from "./resolve";
+import { columnsOf, readRelations } from "./tables";
 import { validate } from "./validate";
 
 /**
@@ -33,10 +33,20 @@ export const generate = async (
   try {
     await apply(executor, sources);
     const enums = await readEnums(executor);
-    const columns = await readColumns(executor);
-    const described = await describeQueries(client, sources.queries, columns);
-    const types = await readTypes(executor, described);
-    const contract = define(sources.queries, described, types, enums);
+    const relations = await readRelations(executor);
+    const described = await describeQueries(
+      client,
+      sources.queries,
+      columnsOf(relations),
+    );
+    const types = await readTypes(executor, described, relations);
+    const contract = define(
+      sources.queries,
+      described,
+      types,
+      enums,
+      relations,
+    );
     return {
       outDir: settings.outDir,
       files: emit(sources, contract),

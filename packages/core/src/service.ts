@@ -1,4 +1,5 @@
 import type {
+  Database,
   Definition,
   Query,
   Returns,
@@ -7,20 +8,26 @@ import type {
   Schema,
   Slot,
 } from "@bezoar/schema";
+import type { Compilable, QueryResult } from "kysely";
 
 import type {
   Args,
   Bezoar,
+  Builder,
   Config,
+  Execute,
   Executor,
   Options,
   Outcome,
   Service,
+  Validator,
 } from "./types";
 
+import { Kysely } from "kysely";
 import { keys } from "objectively";
 
-import { RESERVED } from "./constant";
+import { BUILT, DELEGATED, RESERVED } from "./constant";
+import { defineDialect } from "./dialect";
 import {
   InvalidArgumentsError,
   InvalidRowError,
@@ -40,9 +47,52 @@ const bind = (
 ): unknown[] => slots.map((slot) => given[slot.name] ?? null);
 
 /**
+ * A row as the driver returns it.
+ */
+type Raw = Record<string, unknown>;
+
+/**
+ * Whether a member of an object is a getter somewhere on its prototype
+ * chain.
+ */
+const isGetter = (target: object, name: string): boolean => {
+  for (
+    let prototype: unknown = Object.getPrototypeOf(target);
+    prototype !== null && prototype !== undefined;
+    prototype = Object.getPrototypeOf(prototype)
+  ) {
+    const descriptor = Object.getOwnPropertyDescriptor(prototype, name);
+    if (descriptor !== undefined) {
+      return typeof descriptor.get === "function";
+    }
+  }
+  return false;
+};
+
+/**
+ * The builder members of a kysely. A method is bound so it reads the kysely
+ * it came from. A getter, such as `fn`, is read once: what it returns is a
+ * module of its own, with members of its own, and is not bound.
+ */
+const delegate = <D extends Definition>(
+  kysely: Kysely<Database<D>>,
+): Builder<D> => {
+  const members: Partial<Record<string, unknown>> = {};
+  for (const name of DELEGATED) {
+    const member: unknown = kysely[name];
+    members[name] =
+      typeof member === "function" && !isGetter(kysely, name)
+        ? member.bind(kysely)
+        : member;
+  }
+  return members as Builder<D>;
+};
+
+/**
  * Builds a {@link Bezoar} service over a container. A transaction builds
  * one over the executor of the transaction. The service inside a transaction
- * has the same surface as the one outside.
+ * has the same surface as the one outside, with its own kysely over the
+ * executor of the transaction.
  */
 export const defineService = <D extends Definition>(
   definition: D,
@@ -94,6 +144,7 @@ export const defineService = <D extends Definition>(
     const outcome = await execute(query, bind(statement.slots, given));
     options.onQuery?.({
       query,
+      sql: config.queries[query],
       arguments: args,
       ms: performance.now() - started,
       count: outcome.count,
@@ -147,6 +198,85 @@ export const defineService = <D extends Definition>(
     return row;
   }
 
+  const kysely = new Kysely<Database<D>>({
+    dialect: defineDialect(() => config.executor),
+  });
+
+  /**
+   * Compiles a built query, runs it through the kysely of the service, and
+   * reports it.
+   *
+   * @throws QueryError when the driver fails.
+   */
+  const built = async (
+    query: Compilable<unknown>,
+  ): Promise<QueryResult<Raw>> => {
+    const compiled = query.compile();
+    const started = performance.now();
+    let result: QueryResult<Raw>;
+    try {
+      result = await kysely.executeQuery<Raw>(compiled);
+    } catch (cause) {
+      throw new QueryError(BUILT, cause);
+    }
+    options.onQuery?.({
+      query: BUILT,
+      sql: compiled.sql,
+      arguments: compiled.parameters,
+      ms: performance.now() - started,
+      count: Number(result.numAffectedRows ?? result.rows.length),
+    });
+    return result;
+  };
+
+  /**
+   * Proves a row of a built query against a validator and returns its
+   * output.
+   *
+   * @throws InvalidRowError when the row does not fit.
+   */
+  const proveWith = (
+    validator: Validator<unknown>,
+    index: number,
+    row: unknown,
+  ): unknown => {
+    const result = validator.safeParse(row);
+    if (!result.success) {
+      throw new InvalidRowError(BUILT, index, result.error.issues);
+    }
+    return result.data;
+  };
+
+  /**
+   * Runs a built query and returns its rows, each proven when a validator
+   * is given. The typed signatures are on {@link Execute}.
+   */
+  const executeAll = async (
+    query: Compilable<unknown>,
+    validator?: Validator<unknown>,
+  ): Promise<unknown[]> => {
+    const { rows } = await built(query);
+    return validator === undefined
+      ? rows
+      : rows.map((row, index) => proveWith(validator, index, row));
+  };
+
+  /**
+   * Runs a built query and returns its first row, proven when a validator
+   * is given, or `null` when it has none.
+   */
+  const executeFirst = async (
+    query: Compilable<unknown>,
+    validator?: Validator<unknown>,
+  ): Promise<unknown> => {
+    const { rows } = await built(query);
+    const row = rows[0];
+    if (row === undefined) {
+      return null;
+    }
+    return validator === undefined ? row : proveWith(validator, 0, row);
+  };
+
   const transaction = <T>(fn: (tx: Bezoar<D>) => Promise<T>): Promise<T> =>
     config.executor.transaction((executor: Executor) =>
       fn(defineService(definition, schema, { ...config, executor }, options)),
@@ -157,6 +287,9 @@ export const defineService = <D extends Definition>(
     schema,
     query: run,
     first: take,
+    // The untyped functions carry the typed signatures of Execute.
+    execute: Object.assign(executeAll, { first: executeFirst }) as Execute,
+    kysely,
     transaction,
     migrate: (migrations) => migrate(config.executor, migrations),
     seed: (seeds) => seed(config.executor, seeds),
@@ -175,5 +308,5 @@ export const defineService = <D extends Definition>(
     },
   );
 
-  return Object.assign(service, groups);
+  return Object.assign(service, delegate(kysely), groups);
 };

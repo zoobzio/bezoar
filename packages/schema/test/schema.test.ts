@@ -48,11 +48,14 @@ describe("defineSchema", () => {
             columns: [],
           },
         },
+        tables: {},
       }),
     ).toThrow(SchemaError);
   });
 
   it("constructs cleanly for an empty definition", () => {
-    expect(() => defineSchema({ enums: {}, queries: {} })).not.toThrow();
+    expect(() =>
+      defineSchema({ enums: {}, queries: {}, tables: {} }),
+    ).not.toThrow();
   });
 });

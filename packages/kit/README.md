@@ -121,7 +121,8 @@ bezoar build
 ```
 
 The build boots [PGlite](https://pglite.dev) in memory and applies the
-migrations and the seeds in order. It reads the enums. Then it serves the
+migrations and the seeds in order. It reads the enums, and the tables and
+the views with their columns. Then it serves the
 database on a local port and describes each query through
 [SafeQL](https://safeql.dev): Postgres reports the type of each slot and
 each column, and SafeQL reports whether each column can be null, through
@@ -142,8 +143,12 @@ The build writes to the output directory:
 
 - `index.mjs` and its declaration: the `contract` and the `isQuery` guard.
   The declaration carries the contract as literal types, so `Arguments`,
-  `Row`, and `Returns` of `@bezoar/schema` derive from it. `Contract` and
-  `Query` are its types. The module holds no SQL.
+  `Row`, `Returns`, and `Database` of `@bezoar/schema` derive from it.
+  `Contract` and `Query` are its types. The module holds no SQL. The
+  contract carries the tables and the views of the database with their
+  columns, which type the query builder of the service. A table column of a
+  type the type table does not have is `unknown`, and does not fail the
+  build as a query column of one does.
 - `queries.mjs` and its declaration: the SQL of each query, by name, with
   the slots at their positions.
 - `migrations.mjs` and its declaration: each migration as data, with its

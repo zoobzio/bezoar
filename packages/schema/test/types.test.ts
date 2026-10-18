@@ -1,7 +1,10 @@
+import type { ColumnType, Generated, Insertable, Selectable } from "kysely";
+
 import { describe, expectTypeOf, it } from "vitest";
 
 import type {
   Arguments,
+  Database,
   Query,
   Returns,
   Row,
@@ -134,5 +137,59 @@ describe("RowQuery", () => {
     expectTypeOf<RowQuery<D>>().toEqualTypeOf<
       "events.list" | "events.bySlug" | "sermons.recent"
     >();
+  });
+});
+
+describe("Database", () => {
+  type Day =
+    | "sunday"
+    | "monday"
+    | "tuesday"
+    | "wednesday"
+    | "thursday"
+    | "friday"
+    | "saturday";
+
+  it("has a member for each table and view", () => {
+    expectTypeOf<keyof Database<D>>().toEqualTypeOf<"events" | "upcoming">();
+  });
+
+  it("types a column by its field, generated where the database fills it", () => {
+    expectTypeOf<Database<D>["events"]>().toEqualTypeOf<{
+      id: Generated<number>;
+      slug: string;
+      day: Day | null;
+      weeks: (number | null)[] | null;
+      ip: unknown;
+    }>();
+  });
+
+  it("makes a generated column optional in an insert", () => {
+    type Insert = Insertable<Database<D>["events"]>;
+    expectTypeOf<{ slug: string }>().toMatchTypeOf<Insert>();
+    expectTypeOf<{ slug: string; id: number }>().toMatchTypeOf<Insert>();
+    expectTypeOf<{ id: number }>().not.toMatchTypeOf<Insert>();
+    expectTypeOf<Insert["id"]>().toEqualTypeOf<number | undefined>();
+    expectTypeOf<
+      Selectable<Database<D>["events"]>["id"]
+    >().toEqualTypeOf<number>();
+  });
+
+  it("makes every column of a view read only", () => {
+    expectTypeOf<Database<D>["upcoming"]>().toEqualTypeOf<{
+      id: ColumnType<number, never, never>;
+      slug: ColumnType<string | null, never, never>;
+    }>();
+    expectTypeOf<Selectable<Database<D>["upcoming"]>>().toEqualTypeOf<{
+      id: number;
+      slug: string | null;
+    }>();
+  });
+
+  it("is empty for a contract with no table", () => {
+    type Empty = Record<never, never>;
+    expectTypeOf<
+      Database<{ enums: Empty; queries: Empty; tables: Empty }>
+    >().toEqualTypeOf<Empty>();
   });
 });

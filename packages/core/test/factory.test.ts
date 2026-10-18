@@ -167,6 +167,7 @@ describe("query", () => {
     expect(onQuery).toHaveBeenCalledOnce();
     expect(onQuery.mock.calls[0]?.[0]).toMatchObject({
       query: "events.list",
+      sql: queries["events.list"],
       arguments: { day: "sunday" },
       count: 2,
     });

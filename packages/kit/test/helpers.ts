@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-/** The fixture project: two migrations and a seed. */
+/** The fixture project: three migrations and a seed. */
 export const FIXTURE = fileURLToPath(
   new URL("./fixtures/project/", import.meta.url),
 );

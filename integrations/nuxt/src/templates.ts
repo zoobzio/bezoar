@@ -71,6 +71,7 @@ export const declaration = ({ build, runtime }: Sources): string => {
     `  export type AppBezoarQuery = ${service}.Query<AppBezoarContract>;`,
     `  export type AppBezoarArguments<Q extends AppBezoarQuery> = ${service}.Arguments<AppBezoarContract, Q>;`,
     `  export type AppBezoarRow<Q extends AppBezoarQuery> = ${service}.Row<AppBezoarContract, Q>;`,
+    `  export type AppBezoarDatabase = ${service}.Database<AppBezoarContract>;`,
     "}",
     "",
   ].join("\n");

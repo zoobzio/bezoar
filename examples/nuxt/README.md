@@ -17,6 +17,9 @@ needs no database and no setup. The data lives for the life of the server.
 - `server/api/bookings/` books seats and cancels a booking. The body of a
   booking is proven against the arguments of the query, through the zod
   schema the service exposes.
+- `server/api/stations/` lists the stations with how many routes leave
+  each, built with `db.selectFrom` of the query builder rather than a query
+  of the database package.
 - `app/pages/` shows the departures and lets a visitor book and cancel.
 
 Each route handler calls `useBezoar()` and gets the service typed by the

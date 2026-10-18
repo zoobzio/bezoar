@@ -2,7 +2,14 @@ import type { Definition } from "./types";
 
 import { z } from "zod";
 
-import { ARRAY, IDENTIFIER, QUERY, SCALARS } from "./constant";
+import {
+  ARRAY,
+  IDENTIFIER,
+  QUERY,
+  SCALARS,
+  TABLE_KINDS,
+  UNKNOWN,
+} from "./constant";
 
 const SCALAR_SET = new Set<string>(SCALARS);
 
@@ -22,6 +29,21 @@ const field = z.strictObject({
 const statement = z.strictObject({
   slots: z.array(field),
   columns: z.array(field),
+});
+
+/**
+ * A column of a table: a field, and whether the database can fill it.
+ */
+const tableColumn = field.extend({
+  generated: z.boolean(),
+});
+
+/**
+ * One table or view: its kind and its columns.
+ */
+const table = z.strictObject({
+  kind: z.enum(TABLE_KINDS),
+  columns: z.array(tableColumn),
 });
 
 /**
@@ -45,6 +67,7 @@ const shape = z.strictObject({
     z.string().regex(QUERY, "A query name must be identifiers joined by dots."),
     statement,
   ),
+  tables: z.record(z.string().min(1), table),
 });
 
 /**
@@ -73,7 +96,8 @@ const distinct = (
  * The zod schema of a complete {@link Definition}. Each label list is
  * distinct. Each slot type and each column type is a scalar or an enum of the
  * definition. The slots of a statement have distinct names. The columns of a
- * statement have distinct names.
+ * statement have distinct names. The columns of a table have distinct names,
+ * and each has a type of the definition or `unknown`.
  */
 export const definition: z.ZodType<Definition> = shape.superRefine(
   (value, ctx) => {
@@ -106,6 +130,25 @@ export const definition: z.ZodType<Definition> = shape.superRefine(
           member === "slots" ? "Slot" : "Column",
         );
       }
+    }
+
+    for (const [name, { columns }] of Object.entries(value.tables)) {
+      const path = ["tables", name, "columns"];
+      for (const [index, { type }] of columns.entries()) {
+        if (type !== UNKNOWN && !known(type)) {
+          ctx.addIssue({
+            code: "custom",
+            message: `'${type}' is not a type of the contract.`,
+            path: [...path, index, "type"],
+          });
+        }
+      }
+      distinct(
+        ctx,
+        path,
+        columns.map((column) => column.name),
+        "Column",
+      );
     }
   },
 );

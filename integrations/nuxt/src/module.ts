@@ -97,6 +97,7 @@ export default defineNuxtModule<NuxtBezoarConfig>({
         "AppBezoarQuery",
         "AppBezoarArguments",
         "AppBezoarRow",
+        "AppBezoarDatabase",
       ].map((name) => ({ from: VIRTUAL.service, name, type: true })),
     ]);
   },

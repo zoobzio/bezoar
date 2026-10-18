@@ -1,13 +1,18 @@
 import type {
   Arguments,
   Bundle,
+  Database,
   Definition,
+  Issue,
   Query,
   Returns,
   Row,
   RowQuery,
   Schema,
 } from "@bezoar/schema";
+import type { Compilable, Kysely } from "kysely";
+
+import type { BUILT, DELEGATED } from "./constant";
 
 /**
  * What a driver answers a query with. `rows` is each row as an object, by
@@ -51,11 +56,14 @@ export type Config<D extends Definition> = {
 };
 
 /**
- * What the service reports after a query runs: the name, the arguments, the
- * time it took in milliseconds, and the count of the outcome.
+ * What the service reports after a query runs: the name, the SQL, the
+ * arguments, the time it took in milliseconds, and the count of the
+ * outcome. A built query reports {@link BUILT} as its name, the compiled SQL,
+ * and its parameters as the arguments.
  */
 export interface Report<D extends Definition> {
-  readonly query: Query<D>;
+  readonly query: Query<D> | typeof BUILT;
+  readonly sql: string;
   readonly arguments: unknown;
   readonly ms: number;
   readonly count: number;
@@ -145,8 +153,58 @@ type Tree<D extends Definition, K extends string, P extends string = ""> = {
 export type Groups<D extends Definition> = Tree<D, Query<D>>;
 
 /**
- * The members of a service other than its queries. A query group cannot
- * take one of these names.
+ * A validator of a row, in the shape of a zod schema: `safeParse` answers
+ * with the value as `R` on success and with the issues on failure. Any zod
+ * schema is one.
+ */
+export interface Validator<R> {
+  safeParse(
+    value: unknown,
+  ):
+    | { readonly success: true; readonly data: R }
+    | { readonly success: false; readonly error: { readonly issues: Issue[] } };
+}
+
+/**
+ * Runs a built query: one made with the builder members of the service, or
+ * any kysely query that compiles. Without a validator, the rows come back as
+ * kysely infers them, unproven. With one, each row is proven against it and
+ * comes back as its output, and a row that does not fit is an
+ * `InvalidRowError`. The output of the validator must fit the row kysely
+ * infers, so a validator that disagrees with the query fails to compile.
+ * `first` runs the query and takes its first row, or `null`.
+ */
+export interface Execute {
+  <O>(query: Compilable<O>): Promise<O[]>;
+  <O, R extends O>(query: Compilable<O>, row: Validator<R>): Promise<R[]>;
+  readonly first: {
+    <O>(query: Compilable<O>): Promise<O | null>;
+    <O, R extends O>(
+      query: Compilable<O>,
+      row: Validator<R>,
+    ): Promise<R | null>;
+  };
+}
+
+/**
+ * The name of a member of kysely the service delegates.
+ */
+export type Delegated = (typeof DELEGATED)[number];
+
+/**
+ * The builder members of a service: the delegated members of a kysely over
+ * the {@link Database} of the contract. `db.selectFrom("events")` is
+ * `db.kysely.selectFrom("events")`. A query built here runs on the executor
+ * of the service when it executes.
+ */
+export type Builder<D extends Definition> = Pick<
+  Kysely<Database<D>>,
+  Delegated
+>;
+
+/**
+ * The members of a service other than its queries and its builder. A query
+ * group cannot take one of these names.
  */
 export interface Service<D extends Definition> {
   /**
@@ -182,9 +240,27 @@ export interface Service<D extends Definition> {
   ) => Promise<Row<D, Q> | null>;
 
   /**
+   * Runs a built query and returns its rows, proven against a validator
+   * when one is given. `execute.first` returns the first row or `null`. See
+   * {@link Execute}. Throws `QueryError` when the driver fails and
+   * `InvalidRowError` when a row does not fit the validator.
+   */
+  execute: Execute;
+
+  /**
+   * The kysely of the service, over the executor of the container and typed
+   * by the tables of the contract. The builder members of the service come
+   * from it. Here for what they do not cover, such as `withSchema`. Its
+   * `transaction` is refused: a transaction belongs to `transaction` of the
+   * service, and the service of a transaction has its own kysely.
+   */
+  kysely: Kysely<Database<D>>;
+
+  /**
    * Runs a function inside one transaction. The function receives a service
-   * over the transaction, with the same queries and options. The transaction
-   * commits when the function returns and rolls back when it throws.
+   * over the transaction, with the same queries, builder, and options. The
+   * transaction commits when the function returns and rolls back when it
+   * throws.
    */
   transaction: <T>(run: (tx: Bezoar<D>) => Promise<T>) => Promise<T>;
 
@@ -204,8 +280,9 @@ export interface Service<D extends Definition> {
 }
 
 /**
- * A runtime database service over a contract. The service has its members
- * and, beside them, a function for every query under its group. It never
- * connects: the caller brings an executor from a driver package.
+ * A runtime database service over a contract. The service has its members,
+ * the builder members of kysely, and, beside them, a function for every
+ * query under its group. It never connects: the caller brings an executor
+ * from a driver package.
  */
-export type Bezoar<D extends Definition> = Service<D> & Groups<D>;
+export type Bezoar<D extends Definition> = Service<D> & Builder<D> & Groups<D>;

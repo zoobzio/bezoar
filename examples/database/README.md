@@ -23,5 +23,7 @@ pnpm --filter @bezoar/example-database build
   `db.departures.byId.first({ id })` takes the one row of a lookup.
 
 `pnpm typecheck` proves the types a consumer derives from the build, in
-`test/types.ts`. `pnpm test` builds a service over the package with
-`@bezoar/testing` and runs every query.
+`test/types.ts`, among them the `Database` the query builder is typed by.
+`pnpm test` builds a service over the package with `@bezoar/testing`, runs
+every query, and builds a few queries the package has no SQL file for with
+the builder of the service.

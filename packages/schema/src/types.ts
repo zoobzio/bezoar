@@ -1,6 +1,7 @@
+import type { ColumnType, Generated } from "kysely";
 import type { z } from "zod";
 
-import type { SCALARS } from "./constant";
+import type { SCALARS, TABLE_KINDS } from "./constant";
 
 /**
  * The JavaScript type for each scalar type of the table. The kit emits these
@@ -66,6 +67,36 @@ export interface Column {
 }
 
 /**
+ * A column of a table: a field of each row of the table. `name` is the name
+ * in the catalog. `type` is a {@link Type}, or `unknown` when the type table
+ * has no entry for it. `nullable` is `true` when the column takes null.
+ * `generated` is `true` when the database can fill the column itself: it
+ * has a default, or it is an identity or a generated column, so an insert
+ * can leave it out.
+ */
+export interface TableColumn {
+  readonly name: string;
+  readonly type: string;
+  readonly nullable: boolean;
+  readonly generated: boolean;
+}
+
+/**
+ * The kind of a table: a `table`, or a `view` that is read and never
+ * written.
+ */
+export type TableKind = (typeof TABLE_KINDS)[number];
+
+/**
+ * A table or a view of the database after the migrations ran: its kind and
+ * its columns, in declaration order. What a query builder is typed from.
+ */
+export interface Table {
+  readonly kind: TableKind;
+  readonly columns: readonly TableColumn[];
+}
+
+/**
  * A statement: one query of the contract. The slots and the columns. A
  * statement with no column returns no rows: a write without `RETURNING`.
  * The statement holds no SQL. The SQL is in the queries bundle, by the same
@@ -79,13 +110,16 @@ export interface Statement {
 /**
  * A contract as `@bezoar/kit` builds it. `enums` maps each enum type of the
  * database to its labels, in declaration order. `queries` maps each query
- * name to its statement. The contract is plain data. The types of the
- * arguments and the rows derive from it. See {@link Arguments} and
- * {@link Row}.
+ * name to its statement. `tables` maps each table and view of the database
+ * to its columns, by its bare name when the search path finds it and by
+ * `schema.name` otherwise. The contract is plain data. The types of the
+ * arguments, the rows, and the query builder derive from it. See
+ * {@link Arguments}, {@link Row}, and {@link Database}.
  */
 export interface Definition {
   readonly enums: Readonly<Record<string, readonly string[]>>;
   readonly queries: Readonly<Record<string, Statement>>;
+  readonly tables: Readonly<Record<string, Table>>;
 }
 
 /**
@@ -191,6 +225,36 @@ export type Row<D extends Definition, Q extends Query<D>> = {
   [C in Columns<D, Q> as C["name"]]: C extends Nullable
     ? Value<D, C["type"]> | null
     : Value<D, C["type"]>;
+};
+
+/**
+ * The JavaScript type of a value of a table column: the {@link Value} of its
+ * type, with `null` when the column is nullable.
+ */
+type Field<D extends Definition, C extends TableColumn> = C extends Nullable
+  ? Value<D, C["type"]> | null
+  : Value<D, C["type"]>;
+
+/**
+ * The columns of a table as kysely types them. A column of a view is read
+ * only. A generated column is optional in an insert. Every other column is
+ * its field in a select, an insert, and an update alike.
+ */
+type Fields<D extends Definition, T extends Table> = {
+  [C in T["columns"][number] as C["name"]]: T["kind"] extends "view"
+    ? ColumnType<Field<D, C>, never, never>
+    : C extends { readonly generated: true }
+      ? Generated<Field<D, C>>
+      : Field<D, C>;
+};
+
+/**
+ * The database of a contract as the type parameter of a kysely `Kysely`:
+ * each table and view by name, with its columns. `@bezoar/core` builds the
+ * query builder of a service over this type.
+ */
+export type Database<D extends Definition> = {
+  [T in keyof D["tables"] & string]: Fields<D, D["tables"][T]>;
 };
 
 /**

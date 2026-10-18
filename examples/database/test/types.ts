@@ -1,4 +1,11 @@
-import type { Arguments, Returns, Row, RowQuery } from "@bezoar/schema";
+import type {
+  Arguments,
+  Database,
+  Returns,
+  Row,
+  RowQuery,
+} from "@bezoar/schema";
+import type { Generated } from "kysely";
 
 import type { Contract } from "../.dist/index.mjs";
 
@@ -58,6 +65,25 @@ export type Checks = [
     >
   >,
   Assert<Equal<Returns<Contract, "routes.list">[number]["nights"], number>>,
+  Assert<
+    Equal<
+      keyof Database<Contract>,
+      "bookings" | "departures" | "routes" | "stations"
+    >
+  >,
+  Assert<
+    Equal<
+      Database<Contract>["departures"],
+      {
+        id: Generated<number>;
+        route_id: number;
+        departs_at: Date;
+        seats: number;
+        status: Generated<Status>;
+        note: string | null;
+      }
+    >
+  >,
 ];
 
 // @ts-expect-error A booking needs its passenger.

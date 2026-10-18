@@ -22,6 +22,7 @@ describe("readMigrations", () => {
     expect(migrations.map((m) => [m.version, m.name, m.path])).toEqual([
       ["0001", "events", "src/migrations/0001_events.sql"],
       ["0002", "staff", "src/migrations/0002_staff.sql"],
+      ["0003", "visits", "src/migrations/0003_visits.sql"],
     ]);
     expect(migrations[0]?.sql).toContain("CREATE TYPE event_day");
   });
@@ -35,6 +36,7 @@ describe("readMigrations", () => {
     expect(migrations.map((m) => [m.version, m.name])).toEqual([
       ["0001", "events"],
       ["0002", "staff"],
+      ["0003", "visits"],
       ["20261016-staff", "20261016-staff"],
     ]);
   });
@@ -54,7 +56,7 @@ describe("readMigrations", () => {
   it("reads only .sql files", async () => {
     await writeFile(join(root, "src/migrations/notes.md"), "# notes");
     const migrations = await readMigrations(root, "src/migrations");
-    expect(migrations).toHaveLength(2);
+    expect(migrations).toHaveLength(3);
   });
 });
 
@@ -76,7 +78,7 @@ describe("readSources", () => {
       queries: "src/queries",
       outDir: ".output",
     });
-    expect(sources.migrations).toHaveLength(2);
+    expect(sources.migrations).toHaveLength(3);
     expect(sources.seeds).toHaveLength(1);
     expect(sources.queries).toHaveLength(8);
   });

@@ -1,4 +1,24 @@
 /**
+ * The members of kysely the service delegates to its builder: the entry
+ * point of each statement, the common table expressions, and the helpers.
+ * The service picks these and no other, so a transaction of kysely or its
+ * schema builder never shadows a member of the service.
+ */
+export const DELEGATED = [
+  "selectFrom",
+  "selectNoFrom",
+  "insertInto",
+  "updateTable",
+  "deleteFrom",
+  "mergeInto",
+  "with",
+  "withRecursive",
+  "fn",
+  "case",
+  "dynamic",
+] as const;
+
+/**
  * The members of a service. A query group cannot take one of these names.
  */
 export const RESERVED = [
@@ -6,10 +26,20 @@ export const RESERVED = [
   "schema",
   "query",
   "first",
+  "execute",
+  "kysely",
   "transaction",
   "migrate",
   "seed",
+  ...DELEGATED,
 ] as const;
+
+/**
+ * The query name a report carries for a built query: one that ran through
+ * the builder rather than the contract. No query of a contract has this
+ * name, as it is reserved.
+ */
+export const BUILT = "kysely";
 
 /**
  * The table that records each applied migration: its version, its name, its

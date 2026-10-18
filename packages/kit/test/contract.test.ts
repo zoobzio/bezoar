@@ -85,6 +85,49 @@ describe("the contract of the fixture", () => {
     ]);
   });
 
+  it("carries each table and view of the catalog with its columns typed", () => {
+    expect(Object.keys(contract.tables).sort()).toEqual([
+      "dated",
+      "events",
+      "leaders",
+      "staff",
+      "visits",
+    ]);
+    expect(contract.tables.events).toEqual({
+      kind: "table",
+      columns: [
+        { name: "id", type: "int4", nullable: false, generated: true },
+        { name: "slug", type: "text", nullable: false, generated: false },
+        { name: "title", type: "text", nullable: false, generated: false },
+        { name: "day", type: "event_day", nullable: true, generated: false },
+        { name: "weeks", type: "int4[]", nullable: true, generated: false },
+        {
+          name: "created_at",
+          type: "timestamptz",
+          nullable: false,
+          generated: true,
+        },
+      ],
+    });
+  });
+
+  it("types a view as read only, and a table column of a type the type table does not have as unknown", () => {
+    expect(contract.tables.dated).toEqual({
+      kind: "view",
+      columns: [
+        { name: "id", type: "int4", nullable: true, generated: false },
+        { name: "slug", type: "text", nullable: true, generated: false },
+        { name: "day", type: "event_day", nullable: true, generated: false },
+      ],
+    });
+    expect(contract.tables.visits?.columns[2]).toEqual({
+      name: "ip",
+      type: "unknown",
+      nullable: false,
+      generated: false,
+    });
+  });
+
   it("types a RETURNING row, an aggregate, and a statement without columns", () => {
     expect(contract.queries["events.insert"]?.columns).toEqual([
       { name: "id", type: "int4", nullable: false },

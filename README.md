@@ -50,7 +50,7 @@ The build writes `.output/`:
 
 - `index.mjs` and its declaration: the `Query` union, the `isQuery` guard, the
   `Arguments` and `Results` interfaces, and the `contract` a service is made
-  from. It carries no SQL.
+  from, with the tables and the views of the database. It carries no SQL.
 - `queries.mjs`: the rewritten SQL of each query, by name.
 - `migrations.mjs` and `seeds.mjs`: each file as data, with its version and a
   checksum, for the runner.
@@ -75,6 +75,27 @@ const event = await db.events.bySlug.first({ slug: "worship" });
 `day` completes to the labels of the enum. A wrong name fails to compile. The
 rows are typed by the columns the query selects, and `first` takes the first
 row or `null`. A transaction hands over a handle with the same surface.
+
+The contract also carries the tables of the database, and the service
+carries a [kysely](https://kysely.dev) typed by them, for the query a SQL
+file cannot anticipate:
+
+```ts
+const sunday = await db
+  .selectFrom("events")
+  .select(["id", "slug"])
+  .where("day", "=", "sunday")
+  .execute();
+
+const proven = await db.execute(
+  query,
+  z.object({ id: z.int(), slug: z.string() }),
+);
+```
+
+A query built this way is typed by the tables and runs on the same executor
+and in the same transaction as the named queries. `execute` proves its rows
+against a schema the caller gives. A named query is always proven.
 
 ## Rules
 

@@ -28,6 +28,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "kysely": "catalog:",
     "objectively": "catalog:",
     "zod": "catalog:"
   }

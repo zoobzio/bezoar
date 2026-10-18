@@ -49,8 +49,8 @@ export class InvalidArgumentsError extends Error {
 
 /**
  * Raised when a row the driver returned does not fit the columns of the
- * query. Carries the query name, the index of the row, and the schema's
- * issues.
+ * query, or the validator of a built query. Carries the query name, which
+ * is `BUILT` for a built query, the index of the row, and the issues.
  */
 export class InvalidRowError extends Error {
   readonly query: string;
@@ -70,7 +70,7 @@ export class InvalidRowError extends Error {
 
 /**
  * Raised at construction when a query group takes the name of a member of
- * the service, such as `migrate`.
+ * the service, such as `migrate` or `selectFrom`.
  */
 export class ReservedQueryError extends Error {
   readonly query: string;
@@ -97,8 +97,8 @@ export class AmbiguousQueryError extends Error {
 }
 
 /**
- * Raised when the driver fails to run a query. Carries the query name and
- * the driver's error as `cause`.
+ * Raised when the driver fails to run a query. Carries the query name, which
+ * is `BUILT` for a built query, and the driver's error as `cause`.
  */
 export class QueryError extends Error {
   readonly query: string;
