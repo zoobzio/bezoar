@@ -1,6 +1,6 @@
 {
   "name": "@bezoar/nuxt",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Nuxt module for bezoar: a typed database service for server routes, from a kit build",
   "license": "MIT",
   "repository": {

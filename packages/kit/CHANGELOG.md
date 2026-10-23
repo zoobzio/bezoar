@@ -1,5 +1,26 @@
 # @bezoar/kit
 
+## 0.0.5
+
+### Patch Changes
+
+- [`ca6d41a`](https://github.com/zoobzio/bezoar/commit/ca6d41a1af3b8b7a66f0cb91e69b522e0ddf10d5) Thanks [@zoobzio](https://github.com/zoobzio)! - Roles. A database package can hold `src/roles/<role>.sql`, the grants of a
+  role, beside its migrations, seeds, and queries. The kit declares the roles
+  before the migrations, applies the grants after them, checks every query
+  under every role, and writes the queries each role may run into the
+  contract as `roles`, with the grants as `roles.mjs`. The service takes a
+  `role` and then offers the queries of the role alone, typed so, and `roles`
+  applies the grants at runtime, with `roles.declare` for the roles alone. The
+  `pg` and `pglite` executors take a `role` and run every statement as it.
+  `makeTestBezoar` takes the grants and a role. The Nuxt module takes `role`
+  and `roles`, scopes `useBezoar()` to the role, and provides
+  `useBezoarOwner()` for the work of the plugin. A login user that joins a role
+  stays the deployment's to make.
+- Updated dependencies [[`ca6d41a`](https://github.com/zoobzio/bezoar/commit/ca6d41a1af3b8b7a66f0cb91e69b522e0ddf10d5)]:
+  - @bezoar/schema@0.0.5
+  - @bezoar/core@0.0.5
+  - @bezoar/pglite@0.0.5
+
 ## 0.0.4
 
 ### Patch Changes
