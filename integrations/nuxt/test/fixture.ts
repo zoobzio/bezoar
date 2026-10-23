@@ -1,4 +1,4 @@
-import type { Definition, Migration, Seed } from "bezoar";
+import type { Definition, Grant, Migration, Seed } from "bezoar";
 
 /** A contract for the runtime tests. */
 export const contract = {
@@ -33,6 +33,11 @@ export const migrations: Migration[] = [
     sql: "CREATE TYPE event_day AS ENUM ('sunday', 'monday'); CREATE TABLE events (id serial PRIMARY KEY, slug text NOT NULL UNIQUE, day event_day NOT NULL);",
     checksum: "a",
   },
+];
+
+/** The grants of the test database. */
+export const roles: Grant[] = [
+  { role: "web", sql: "GRANT SELECT ON events TO web;" },
 ];
 
 /** The seeds of the test database. */

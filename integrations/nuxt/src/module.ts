@@ -26,10 +26,11 @@ import { build, declaration, service } from "./templates";
  * declaration in the build directory types the service by the contract. The
  * module provides `useBezoar()` to the server from the virtual service: a
  * service over the contract of the build, typed by it, connected through
- * the driver and the connection string of the runtime config. The plugin of
- * the runtime makes the service when the server starts, applies the
- * migrations and runs the seeds of the virtual build when the config asks,
- * and closes the connection when the server stops.
+ * the driver and the connection string of the runtime config, and scoped
+ * to the role of the options when there is one. The plugin of the runtime
+ * makes the service when the server starts, declares the roles, applies the
+ * migrations, applies the grants, and runs the seeds of the virtual build
+ * when the config asks, and closes the connection when the server stops.
  *
  * The modules are virtual, not written, so Nitro bundles them in dev as in
  * production. Nitro loads a written file through Node in dev, where neither
@@ -69,7 +70,7 @@ export default defineNuxtModule<NuxtBezoarConfig>({
     addTypeTemplate(
       {
         filename: DECLARATION,
-        getContents: () => declaration(sources),
+        getContents: () => declaration(sources, options.role),
       },
       { nitro: true, nuxt: true },
     );
@@ -80,6 +81,8 @@ export default defineNuxtModule<NuxtBezoarConfig>({
       driver: options.driver ?? "pg",
       migrate: options.migrate ?? false,
       seed: options.seed ?? false,
+      roles: options.roles ?? false,
+      role: options.role ?? "",
     };
     const given = nuxt.options.runtimeConfig.bezoar;
     nuxt.options.runtimeConfig.bezoar = {
@@ -90,6 +93,7 @@ export default defineNuxtModule<NuxtBezoarConfig>({
     addServerPlugin(await resolver.resolvePath("./runtime/server/plugin"));
     addServerImports([
       { from: VIRTUAL.service, name: "useBezoar" },
+      { from: VIRTUAL.service, name: "useBezoarOwner" },
       { from: VIRTUAL.service, name: "closeBezoar" },
       ...[
         "AppBezoar",
@@ -98,6 +102,7 @@ export default defineNuxtModule<NuxtBezoarConfig>({
         "AppBezoarArguments",
         "AppBezoarRow",
         "AppBezoarDatabase",
+        "AppBezoarRole",
       ].map((name) => ({ from: VIRTUAL.service, name, type: true })),
     ]);
   },

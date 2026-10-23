@@ -2,7 +2,8 @@
 
 The database of Solstice Rail, a fictional night-train company, built with
 `@bezoar/kit` into a package the Nuxt example imports. `bezoar build`
-writes the contract, the SQL, the migrations, and the seeds under `.dist/`,
+writes the contract, the SQL, the migrations, the seeds, and the roles under
+`.dist/`,
 which is what this package exports. The Nuxt example's `bezoar.build`
 option names it.
 
@@ -21,6 +22,12 @@ pnpm --filter @bezoar/example-database build
   `departures/upcoming.sql` is `db.departures.upcoming({ after })`, and
   lists each departure with the seats its bookings leave.
   `db.departures.byId.first({ id })` takes the one row of a lookup.
+- `src/roles/` holds one file per role, named for it: the grants of `desk`,
+  the booking desk that reads the timetable and makes and cancels bookings,
+  and of `board`, the departures board that reads the timetable and the
+  seats of each booking and nothing else. The build checks every query
+  under each role and writes what it found into the contract, so a service
+  scoped to `board` has `departures.upcoming` and not `bookings.create`.
 
 `pnpm typecheck` proves the types a consumer derives from the build, in
 `test/types.ts`, among them the `Database` the query builder is typed by.

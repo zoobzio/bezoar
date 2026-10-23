@@ -68,6 +68,12 @@ const shape = z.strictObject({
     statement,
   ),
   tables: z.record(z.string().min(1), table),
+  roles: z
+    .record(
+      z.string().regex(IDENTIFIER, "A role name must be an identifier."),
+      z.array(z.string().min(1)),
+    )
+    .optional(),
 });
 
 /**
@@ -97,7 +103,8 @@ const distinct = (
  * distinct. Each slot type and each column type is a scalar or an enum of the
  * definition. The slots of a statement have distinct names. The columns of a
  * statement have distinct names. The columns of a table have distinct names,
- * and each has a type of the definition or `unknown`.
+ * and each has a type of the definition or `unknown`. Each query of a role
+ * is a query of the definition, listed once.
  */
 export const definition: z.ZodType<Definition> = shape.superRefine(
   (value, ctx) => {
@@ -149,6 +156,20 @@ export const definition: z.ZodType<Definition> = shape.superRefine(
         columns.map((column) => column.name),
         "Column",
       );
+    }
+
+    for (const [name, queries] of Object.entries(value.roles ?? {})) {
+      const path = ["roles", name];
+      for (const [index, query] of queries.entries()) {
+        if (!(query in value.queries)) {
+          ctx.addIssue({
+            code: "custom",
+            message: `'${query}' is not a query of the contract.`,
+            path: [...path, index],
+          });
+        }
+      }
+      distinct(ctx, path, queries, "Query");
     }
   },
 );

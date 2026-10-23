@@ -1,4 +1,12 @@
-import { MigrationError, QueryError } from "@bezoar/core";
+import type { Grant, Migration, Seed } from "@bezoar/core";
+import type { Definition } from "@bezoar/schema";
+
+import {
+  MigrationError,
+  QueryError,
+  RoleError,
+  UnknownRoleError,
+} from "@bezoar/core";
 import { describe, expect, it, vi } from "vitest";
 
 import { makeTestBezoar } from "../src/testing";
@@ -74,5 +82,82 @@ describe("makeTestBezoar", () => {
     await expect(
       makeTestBezoar(contract, { queries, migrations: failing }),
     ).rejects.toThrow(MigrationError);
+  });
+});
+
+describe("makeTestBezoar with roles", () => {
+  const scoped = {
+    ...contract,
+    roles: { web: ["events.list", "events.count"], office: ["events.count"] },
+  } as const satisfies Definition;
+  const roles: Grant[] = [
+    { role: "web", sql: "GRANT SELECT ON events TO web;" },
+    { role: "office", sql: "" },
+  ];
+  const policy: Migration[] = [
+    ...migrations,
+    {
+      version: "0002",
+      name: "policy",
+      checksum: "b",
+      sql: `ALTER TABLE events ENABLE ROW LEVEL SECURITY;
+            CREATE POLICY sundays ON events FOR SELECT TO web USING (day = 'sunday');`,
+    },
+  ];
+  const seeded: Seed[] = [
+    {
+      name: "events",
+      sql: `INSERT INTO events (slug, day) VALUES ('worship', 'sunday'), ('study', 'monday') ON CONFLICT DO NOTHING;`,
+    },
+  ];
+
+  it("declares the roles before the migrations and applies the grants after", async () => {
+    await using db = await makeTestBezoar(scoped, {
+      queries,
+      migrations: policy,
+      seeds: seeded,
+      roles,
+    });
+    expect(await db.events.count.first()).toEqual({ total: 2 });
+    const { rows } = await db.config.executor.query(
+      "SELECT has_table_privilege('web', 'events', 'SELECT') AS can",
+      [],
+    );
+    expect(rows).toEqual([{ can: true }]);
+  });
+
+  it("scopes the service to a role, over the database the owner set up", async () => {
+    await using db = await makeTestBezoar(scoped, {
+      queries,
+      migrations: policy,
+      seeds: seeded,
+      roles,
+      role: "web",
+    });
+    expect(db.config.role).toBe("web");
+    expect(await db.events.count.first()).toEqual({ total: 1 });
+    expect(await db.events.list({ day: "monday" })).toEqual([]);
+  });
+
+  it("throws when the contract has no such role", async () => {
+    await expect(
+      makeTestBezoar(scoped, {
+        queries,
+        migrations,
+        roles,
+        // @ts-expect-error The contract has no such role.
+        role: "guest",
+      }),
+    ).rejects.toThrow(UnknownRoleError);
+  });
+
+  it("closes the database and throws when a grant fails", async () => {
+    await expect(
+      makeTestBezoar(scoped, {
+        queries,
+        migrations,
+        roles: [{ role: "web", sql: "GRANT SELECT ON nothing TO web;" }],
+      }),
+    ).rejects.toThrow(RoleError);
   });
 });

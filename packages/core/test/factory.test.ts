@@ -2,11 +2,15 @@ import { describe, expect, expectTypeOf, it, vi } from "vitest";
 
 import type { Report } from "../src/types";
 
+import type { Definition } from "@bezoar/schema";
+
 import {
+  ForbiddenQueryError,
   InvalidArgumentsError,
   InvalidBundleError,
   InvalidRowError,
   QueryError,
+  UnknownRoleError,
 } from "../src/error";
 import { makeBezoar } from "../src/factory";
 import { contract, fake, queries } from "./fixture";
@@ -288,5 +292,90 @@ describe("migrate and seed", () => {
     ]);
     await db.seed([{ name: "events", sql: "INSERT INTO events" }]);
     expect(executor.ends).toEqual(["commit", "commit"]);
+  });
+});
+
+describe("a service scoped to a role", () => {
+  const scoped = {
+    ...contract,
+    roles: {
+      web: ["events.list", "events.bySlug", "events.count"],
+      admin: ["events.list", "events.insert", "events.archive"],
+    },
+  } as const satisfies Definition;
+
+  const web = (answer: Record<string, unknown>[] = rows) => {
+    const executor = fake(() => ({ rows: answer, count: answer.length }));
+    return {
+      db: makeBezoar(scoped, { executor, queries, role: "web" }),
+      executor,
+    };
+  };
+
+  it("has a function for the queries of the role and no other", () => {
+    const { db } = web();
+    expect(Object.keys(db.events).sort()).toEqual(["bySlug", "count", "list"]);
+    expectTypeOf(db.events).not.toHaveProperty("insert");
+    expect(db.config.role).toBe("web");
+  });
+
+  it("runs a query of the role", async () => {
+    const { db } = web();
+    await expect(db.events.list({ day: "sunday" })).resolves.toEqual(rows);
+    await expect(db.query("events.list", { day: "sunday" })).resolves.toEqual(
+      rows,
+    );
+  });
+
+  it("refuses a query the role may not run, by name", async () => {
+    const { db, executor } = web();
+    await expect(
+      // @ts-expect-error The query is not one of the role.
+      db.query("events.insert", { title: "Prayer" }),
+    ).rejects.toThrow(ForbiddenQueryError);
+    expect(executor.calls).toEqual([]);
+  });
+
+  it("keeps the role inside a transaction", async () => {
+    const { db } = web();
+    await db.transaction(async (tx) => {
+      expect(tx.config.role).toBe("web");
+      expect("insert" in tx.events).toBe(false);
+      await expect(
+        // @ts-expect-error The query is not one of the role.
+        tx.query("events.archive", { ids: [1] }),
+      ).rejects.toThrow(ForbiddenQueryError);
+    });
+  });
+
+  it("offers every query without a role", () => {
+    const db = makeBezoar(scoped, { executor: fake(), queries });
+    expect(Object.keys(db.events).sort()).toEqual([
+      "archive",
+      "bySlug",
+      "count",
+      "insert",
+      "list",
+    ]);
+  });
+
+  it("refuses a role the contract does not have", () => {
+    expect(() =>
+      // @ts-expect-error The contract has no such role.
+      makeBezoar(scoped, { executor: fake(), queries, role: "guest" }),
+    ).toThrow(UnknownRoleError);
+    expect(() =>
+      // @ts-expect-error The contract has no roles at all.
+      makeBezoar(contract, { executor: fake(), queries, role: "web" }),
+    ).toThrow(UnknownRoleError);
+  });
+
+  it("applies grants and declares roles through the executor", async () => {
+    const { db, executor } = web([]);
+    const grants = [{ role: "web", sql: "GRANT SELECT ON events TO web" }];
+    await db.roles.declare(grants);
+    expect(executor.calls.at(-1)?.sql).toBe('CREATE ROLE "web" NOLOGIN');
+    await db.roles(grants);
+    expect(executor.calls.at(-1)?.sql).toBe("GRANT SELECT ON events TO web");
   });
 });

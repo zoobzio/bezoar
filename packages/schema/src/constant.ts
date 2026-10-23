@@ -45,9 +45,10 @@ export const UNKNOWN = "unknown";
 export const TABLE_KINDS = ["table", "view"] as const;
 
 /**
- * The members of a definition.
+ * The members of a definition. `roles` is optional: a contract built before
+ * roles existed has none.
  */
-export const DEFINITION_KEYS = ["enums", "queries", "tables"] as const;
+export const DEFINITION_KEYS = ["enums", "queries", "tables", "roles"] as const;
 
 /**
  * The members of a table.

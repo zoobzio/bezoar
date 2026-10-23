@@ -7,6 +7,8 @@ import type {
   Database,
   Query,
   Returns,
+  Role,
+  RoleQuery,
   Row,
   RowQuery,
   Type,
@@ -15,6 +17,14 @@ import type {
 import type { definition } from "./fixture";
 
 type D = typeof definition;
+
+/** The fixture with roles, each over a few of its queries. */
+type Scoped = D & {
+  readonly roles: {
+    readonly web: readonly ["events.list", "events.bySlug"];
+    readonly admin: readonly ["events.list", "events.insert", "events.touch"];
+  };
+};
 
 /**
  * The types derive from the definition. The compiler checks these cases
@@ -28,6 +38,24 @@ describe("Query", () => {
       | "events.insert"
       | "events.touch"
       | "sermons.recent"
+    >();
+  });
+});
+
+describe("Role", () => {
+  it("is the union of the role names, and never without roles", () => {
+    expectTypeOf<Role<Scoped>>().toEqualTypeOf<"web" | "admin">();
+    expectTypeOf<Role<D>>().toEqualTypeOf<never>();
+  });
+});
+
+describe("RoleQuery", () => {
+  it("is the union of the queries of the role", () => {
+    expectTypeOf<RoleQuery<Scoped, "web">>().toEqualTypeOf<
+      "events.list" | "events.bySlug"
+    >();
+    expectTypeOf<RoleQuery<Scoped, "admin">>().toEqualTypeOf<
+      "events.list" | "events.insert" | "events.touch"
     >();
   });
 });

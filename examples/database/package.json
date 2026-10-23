@@ -20,6 +20,10 @@
     "./seeds": {
       "types": "./.dist/seeds.d.mts",
       "import": "./.dist/seeds.mjs"
+    },
+    "./roles": {
+      "types": "./.dist/roles.d.mts",
+      "import": "./.dist/roles.mjs"
     }
   },
   "scripts": {

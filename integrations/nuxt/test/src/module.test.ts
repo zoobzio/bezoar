@@ -127,8 +127,9 @@ describe("bezoar module", () => {
       `export type AppBezoarContract = typeof import(${JSON.stringify(join(root, "db/.output/index.mjs"))}).contract;`,
     );
     expect(declaration).toContain(
-      'import("/module/.dist/runtime/server/service.js").Defined<AppBezoarContract>',
+      'import("/module/.dist/runtime/server/service.js").Defined<AppBezoarContract, AppBezoarRole>',
     );
+    expect(declaration).toContain("export type AppBezoarRole = undefined;");
     // An import declaration in an ambient module may not name a path.
     expect(declaration).not.toMatch(/^\s*import /m);
     expect(declaration).toContain("export const useBezoar:");
@@ -137,6 +138,27 @@ describe("bezoar module", () => {
       nitro: true,
       nuxt: true,
     });
+  });
+
+  it("declares the role of the options, and exports the grants of a build that has them", async () => {
+    await build(join(root, "db/.output"));
+    await writeFile(join(root, "db/.output/roles.mjs"), "export {};\n");
+    await mod.setup({ build: "./db/.output", role: "web" }, nuxt);
+    expect(written()["types/bezoar.d.ts"]).toContain(
+      'export type AppBezoarRole = "web";',
+    );
+    expect(written()["#bezoar/build"]).toContain(
+      `export { roles } from ${JSON.stringify(join(root, "db/.output/roles.mjs"))};`,
+    );
+    expect(nuxt.options.runtimeConfig.bezoar).toMatchObject({ role: "web" });
+  });
+
+  it("exports no grant over a build without a roles module", async () => {
+    await build(join(root, "db/.output"));
+    await mod.setup({ build: "./db/.output" }, nuxt);
+    expect(written()["#bezoar/build"]).toContain(
+      "export const roles = Object.freeze([]);",
+    );
   });
 
   it("adopts a build named as a package", async () => {
@@ -173,6 +195,8 @@ describe("bezoar module", () => {
       driver: "pglite",
       migrate: true,
       seed: false,
+      roles: false,
+      role: "",
     });
   });
 
@@ -199,6 +223,7 @@ describe("bezoar module", () => {
     );
     expect(entries.map((entry) => entry.name)).toEqual([
       "useBezoar",
+      "useBezoarOwner",
       "closeBezoar",
       "AppBezoar",
       "AppBezoarContract",
@@ -206,6 +231,7 @@ describe("bezoar module", () => {
       "AppBezoarArguments",
       "AppBezoarRow",
       "AppBezoarDatabase",
+      "AppBezoarRole",
     ]);
   });
 });

@@ -8,9 +8,15 @@ pnpm --filter @bezoar/example-database build
 pnpm --filter @bezoar/example-nuxt dev
 ```
 
-The module runs Postgres in the process with the `pglite` driver, applies
-the migrations and runs the seeds when the server starts, so the example
-needs no database and no setup. The data lives for the life of the server.
+The module runs Postgres in the process with the `pglite` driver, declares
+the roles, applies the migrations and the grants, and runs the seeds when
+the server starts, so the example needs no database and no setup. The data
+lives for the life of the server.
+
+The app is the booking desk, so `role: "desk"` scopes `useBezoar()` to the
+`desk` role of the database package: the service offers the queries the
+desk may run, typed so, and runs them as the desk. The startup work runs as
+the owner, on `useBezoarOwner()`.
 
 - `server/api/departures/` lists the upcoming departures with the seats left,
   and one departure with its bookings.

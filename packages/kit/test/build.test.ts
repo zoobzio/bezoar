@@ -20,7 +20,7 @@ afterEach(async () => {
 });
 
 describe("generate", () => {
-  it("produces the contract, the SQL, the migrations, and the seeds", async () => {
+  it("produces the contract, the SQL, the migrations, the seeds, and the roles", async () => {
     const output = await generate({ outDir: ".output" }, root);
     expect(output.outDir).toBe(".output");
     expect(output.files.map((file) => file.path)).toEqual([
@@ -32,6 +32,8 @@ describe("generate", () => {
       "migrations.d.mts",
       "seeds.mjs",
       "seeds.d.mts",
+      "roles.mjs",
+      "roles.d.mts",
     ]);
     expect(output.enums.event_day).toEqual(["sunday", "monday", "tuesday"]);
   });
@@ -64,6 +66,8 @@ describe("build", () => {
       "migrations.mjs",
       "queries.d.mts",
       "queries.mjs",
+      "roles.d.mts",
+      "roles.mjs",
       "seeds.d.mts",
       "seeds.mjs",
     ]);
@@ -79,6 +83,24 @@ describe("build", () => {
     ]);
     const { seeds } = await import(join(root, ".output/seeds.mjs"));
     expect(seeds[0].name).toBe("events");
+    const { roles } = await import(join(root, ".output/roles.mjs"));
+    expect(roles.map((r: { role: string }) => r.role)).toEqual([
+      "admin",
+      "web",
+    ]);
+    expect(roles[1].sql).toContain("GRANT SELECT ON events, dated TO web");
+    const { contract } = await import(join(root, ".output/index.mjs"));
+    expect(Object.keys(contract.roles)).toEqual(["admin", "web"]);
+  });
+
+  it("declares the roles of the contract as literal types", async () => {
+    await build({ root });
+    const declaration = await readFile(
+      join(root, ".output/index.d.mts"),
+      "utf8",
+    );
+    expect(declaration).toContain('readonly "roles": {');
+    expect(declaration).toContain('readonly "web": readonly [');
   });
 
   it("removes a file the previous write produced and this one does not", async () => {

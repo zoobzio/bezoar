@@ -1,5 +1,6 @@
 import type { ParserOptions } from "@electric-sql/pglite";
 
+import { quote } from "@bezoar/core";
 import { types } from "@electric-sql/pglite";
 
 /**
@@ -18,3 +19,11 @@ export const PARSERS: ParserOptions = {
  * depth of the transaction follows it.
  */
 export const SAVEPOINT = "bezoar_";
+
+/**
+ * Takes a role for the rest of the transaction. The client has one session,
+ * so a scoped executor takes the role inside each transaction it opens
+ * rather than on the session, and an executor without a role over the same
+ * client is untouched.
+ */
+export const ROLE = (role: string): string => `SET LOCAL ROLE ${quote(role)}`;

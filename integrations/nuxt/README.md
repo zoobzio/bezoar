@@ -41,9 +41,11 @@ each member.
 | `driver`  | `NUXT_BEZOAR_DRIVER`   | `pg` or `pglite`. Defaults to `pg`          |
 | `migrate` | `NUXT_BEZOAR_MIGRATE`  | Apply the migrations when the server starts |
 | `seed`    | `NUXT_BEZOAR_SEED`     | Run the seeds when the server starts        |
+| `roles`   | `NUXT_BEZOAR_ROLES`    | Apply the grants when the server starts     |
+| `role`    | `NUXT_BEZOAR_ROLE`     | The role the service is scoped to           |
 
-`driver`, `migrate`, and `seed` can also be set in the module options. A
-value in the runtime config wins.
+`driver`, `migrate`, `seed`, `roles`, and `role` can also be set in the
+module options. A value in the runtime config wins.
 
 The `pg` driver connects to a Postgres server and needs `url`. The `pglite`
 driver runs Postgres in the process, on `dataDir`, or in memory when it is
@@ -72,14 +74,49 @@ completes as well.
 `AppBezoarArguments<Q>`, `AppBezoarRow<Q>`, and `AppBezoarDatabase` are the
 types, also auto-imported.
 
+## Roles
+
+A build with roles carries, for each role, the queries it may run. `role`
+scopes the service of the app to one of them.
+
+```ts
+// nuxt.config.ts
+export default defineNuxtConfig({
+  modules: ["@bezoar/nuxt"],
+  bezoar: { build: "@bbf/database", role: "web" },
+});
+```
+
+`useBezoar()` then offers the queries of the role and no other, and its
+type narrows to them: in the app of `web`, `db.admin.events.update` is a
+type error. The queries run as the role: the `pg` driver opens a pool of
+its own that takes the role on each connection, and the `pglite` driver a
+second executor over the one database. The login user of the connection
+string must be a member of the role. In production that user can be a
+member of the role alone, and the database holds the scope whatever the
+service does. In development on `pglite`, the one superuser takes the role,
+and a query that reaches past it fails on your machine as it would in
+production.
+
+`useBezoarOwner()` is the service over every query as the login user, which
+the plugin runs the startup work on. Without a role, it is `useBezoar()`
+itself. `AppBezoarRole` is the role of the module options, as a type, or
+`undefined`.
+
+A login user that is a member of its role alone cannot migrate or grant.
+An app over one sets `migrate`, `roles`, and `seed` to false, and the owner
+of the database, another app or a deploy step, applies them.
+
 ## Startup and shutdown
 
-A server plugin makes the service when the server starts. With `migrate`,
-it applies the migrations of the build first, through `migrate` of
-`@bezoar/core`, under an advisory lock, so instances that start together
-apply each migration once. With `seed`, it runs the seeds after. When the
-server stops, the plugin closes the connection. `closeBezoar()` closes it
-by hand.
+A server plugin makes the service when the server starts. With `roles`, it
+declares the roles of the build first, through `roles.declare` of
+`@bezoar/core`, so a migration can name one. With `migrate`, it applies the
+migrations of the build, through `migrate`, under an advisory lock, so
+instances that start together apply each migration once. With `roles`, it
+then applies the grants, through `roles`. With `seed`, it runs the seeds
+last. The startup work runs on `useBezoarOwner()`. When the server stops,
+the plugin closes the connections. `closeBezoar()` closes them by hand.
 
 ## Runtime
 

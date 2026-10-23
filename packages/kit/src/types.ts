@@ -1,4 +1,4 @@
-import type { Migration, Seed } from "@bezoar/core";
+import type { Grant, Migration, Seed } from "@bezoar/core";
 import type { Definition, TableKind } from "@bezoar/schema";
 
 /**
@@ -25,6 +25,12 @@ export interface KitConfig {
   queries?: string;
 
   /**
+   * The directory of roles. Each file is `<role>.sql`: the grants of the
+   * role. Defaults to `src/roles`.
+   */
+  roles?: string;
+
+  /**
    * The output directory. Defaults to `bezoar`.
    */
   outDir?: string;
@@ -37,6 +43,7 @@ export interface Settings {
   migrations: string;
   seeds: string;
   queries: string;
+  roles: string;
   outDir: string;
 }
 
@@ -52,6 +59,15 @@ export interface MigrationFile extends Migration {
  * A seed as the kit read it: the seed, and the file it came from.
  */
 export interface SeedFile extends Seed {
+  /** The path of the file, relative to the project root. */
+  readonly path: string;
+}
+
+/**
+ * A grant as the kit read it: the grant, and the file it came from. The
+ * file is named for its role: `web.sql` is the grant of `web`.
+ */
+export interface GrantFile extends Grant {
   /** The path of the file, relative to the project root. */
   readonly path: string;
 }
@@ -86,6 +102,9 @@ export interface Sources {
 
   /** The queries, in file name order. */
   queries: Query[];
+
+  /** The grants, in file name order. */
+  roles: GrantFile[];
 }
 
 /**
@@ -110,6 +129,13 @@ export interface Described {
  * its labels, in declaration order. What the contract carries as `enums`.
  */
 export type Enums = Readonly<Record<string, readonly string[]>>;
+
+/**
+ * The queries each role may run, by role, in query name order: those the
+ * hermetic database let the role plan after the grants were applied. What
+ * the contract carries as `roles`.
+ */
+export type Roles = Readonly<Record<string, readonly string[]>>;
 
 /**
  * A table or a view of the database after the migrations ran, as the kit

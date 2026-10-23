@@ -57,6 +57,7 @@ describe("validate", () => {
       migrations: "src/migrations",
       seeds: "src/seeds",
       queries: "src/queries",
+      roles: "src/roles",
       outDir: "bezoar",
     });
   });
@@ -68,6 +69,7 @@ describe("validate", () => {
       migrations: "db/migrations",
       seeds: "src/seeds",
       queries: "src/queries",
+      roles: "src/roles",
       outDir: ".output",
     });
   });

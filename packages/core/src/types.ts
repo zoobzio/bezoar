@@ -6,6 +6,8 @@ import type {
   Issue,
   Query,
   Returns,
+  Role,
+  RoleQuery,
   Row,
   RowQuery,
   Schema,
@@ -43,16 +45,40 @@ export interface Executor {
 }
 
 /**
+ * The role a service is scoped to: a role of the contract, or `undefined`
+ * for a service over every query.
+ */
+export type Scoping<D extends Definition> = Role<D> | undefined;
+
+/**
+ * The queries a service scoped to `R` offers: the queries of the role, or
+ * every query of the contract when there is no role.
+ */
+export type Scope<D extends Definition, R extends Scoping<D>> = [R] extends [
+  Role<D>,
+]
+  ? RoleQuery<D, R>
+  : Query<D>;
+
+/**
  * The caller-owned state a {@link Bezoar} service reads: the executor it
  * runs on and the SQL of every query. The service reads the executor on each
  * call. A caller can replace it.
  */
-export type Config<D extends Definition> = {
+export type Config<D extends Definition, R extends Scoping<D> = undefined> = {
   /** The connection the service runs on. */
   executor: Executor;
 
   /** The SQL of each query, by name, as `@bezoar/kit` built it. */
   queries: Bundle<D>;
+
+  /**
+   * The role the service is scoped to. The service offers the queries the
+   * kit found the role may run and no other, and the executor is expected
+   * to run as the role: a driver takes the role when it connects. Without
+   * one, the service offers every query of the contract.
+   */
+  role?: R;
 };
 
 /**
@@ -104,6 +130,17 @@ export interface Seed {
 }
 
 /**
+ * One grant, as `@bezoar/kit` built it: the name of a role, and the SQL
+ * that gives the role its privileges. A grant is not tracked: the runner
+ * revokes what the role holds and runs the SQL again, so the SQL states the
+ * whole of the privileges of the role.
+ */
+export interface Grant {
+  readonly role: string;
+  readonly sql: string;
+}
+
+/**
  * The arguments a query is called with: its arguments when it has a required
  * slot, and optional arguments when every slot is nullable or there is none.
  */
@@ -148,9 +185,13 @@ type Tree<D extends Definition, K extends string, P extends string = ""> = {
  * The queries of a contract as functions: `db.events.list({ day })`. A dot
  * in a name is a level of the object. The query `events.list` is
  * `db.events.list()`, and its first row is `db.events.list.first()`. The
- * directory of a query file is its group and the file is its name.
+ * directory of a query file is its group and the file is its name. `Q` is
+ * the queries to offer: every query of the contract, or those of a role.
  */
-export type Groups<D extends Definition> = Tree<D, Query<D>>;
+export type Groups<D extends Definition, Q extends Query<D> = Query<D>> = Tree<
+  D,
+  Q
+>;
 
 /**
  * A validator of a row, in the shape of a zod schema: `safeParse` answers
@@ -187,14 +228,36 @@ export interface Execute {
 }
 
 /**
- * The members of a service other than its queries. A query group cannot
- * take one of these names.
+ * Applies the grants of a build, and `declare` makes their roles alone.
  */
-export interface Service<D extends Definition> {
+export interface Roles {
   /**
-   * The caller-owned state: the executor and the SQL bundle.
+   * Makes the roles the cluster lacks, and applies the grants: for each
+   * role, revokes what it holds and runs its SQL, inside one transaction
+   * under an advisory lock. Throws `RoleError` when one fails.
    */
-  config: Config<D>;
+  (grants: readonly Grant[]): Promise<void>;
+
+  /**
+   * Makes the roles the cluster lacks and grants nothing. What a migration
+   * that names a role needs before it runs.
+   */
+  readonly declare: (grants: readonly Grant[]) => Promise<void>;
+}
+
+/**
+ * The members of a service other than its queries. A query group cannot
+ * take one of these names. `R` is the role the service is scoped to, or
+ * `undefined` for a service over every query.
+ */
+export interface Service<
+  D extends Definition,
+  R extends Scoping<D> = undefined,
+> {
+  /**
+   * The caller-owned state: the executor, the SQL bundle, and the role.
+   */
+  config: Config<D, R>;
 
   /**
    * The validation bundle for the contract.
@@ -208,7 +271,7 @@ export interface Service<D extends Definition> {
    * when the arguments do not fit the slots, `QueryError` when the driver
    * fails, and `InvalidRowError` when a row does not fit the columns.
    */
-  query: <Q extends Query<D>>(
+  query: <Q extends Scope<D, R>>(
     query: Q,
     ...args: Args<D, Q>
   ) => Promise<Returns<D, Q>>;
@@ -218,7 +281,7 @@ export interface Service<D extends Definition> {
    * when it has none. The same call as `first` on the function under its
    * group. Proves the row it returns and no other. Throws as `query` does.
    */
-  first: <Q extends RowQuery<D>>(
+  first: <Q extends Scope<D, R> & RowQuery<D>>(
     query: Q,
     ...args: Args<D, Q>
   ) => Promise<Row<D, Q> | null>;
@@ -247,7 +310,7 @@ export interface Service<D extends Definition> {
    * transaction commits when the function returns and rolls back when it
    * throws.
    */
-  transaction: <T>(run: (tx: Bezoar<D>) => Promise<T>) => Promise<T>;
+  transaction: <T>(run: (tx: Bezoar<D, R>) => Promise<T>) => Promise<T>;
 
   /**
    * Applies the migrations the database lacks, in the order given, inside
@@ -262,11 +325,20 @@ export interface Service<D extends Definition> {
    * `SeedError` when one fails.
    */
   seed: (seeds: readonly Seed[]) => Promise<void>;
+
+  /**
+   * Applies the grants of a build. See {@link Roles}.
+   */
+  roles: Roles;
 }
 
 /**
  * A runtime database service over a contract. The service has its members
  * and, beside them, a function for every query under its group. It never
- * connects: the caller brings an executor from a driver package.
+ * connects: the caller brings an executor from a driver package. A service
+ * scoped to a role `R` has a function for the queries of the role alone.
  */
-export type Bezoar<D extends Definition> = Service<D> & Groups<D>;
+export type Bezoar<
+  D extends Definition,
+  R extends Scoping<D> = undefined,
+> = Service<D, R> & Groups<D, Scope<D, R>>;

@@ -55,6 +55,28 @@ again. The executor refreshes them after each `exec`, and after each
 transaction that ran one, so a column such as `event_day[]` parses as an
 array as soon as `migrate` returns.
 
+## Roles
+
+`pglite(source, { role })` makes an executor that runs every statement as
+the role: each statement at the top level runs inside a transaction that
+takes the role with `SET LOCAL ROLE`, and each transaction the executor
+opens takes it first. The session of the client keeps its own role, so an
+executor without one over the same client runs as the owner.
+
+```ts
+const owner = pglite();
+const web = pglite(owner.client, { role: "web" });
+
+await makeBezoar(contract, { executor: owner, queries }).migrate(migrations);
+const db = makeBezoar(contract, { executor: web, queries, role: "web" });
+```
+
+The one in-process database serves both: the owner applies the migrations
+and the grants, and the queries of the app run as the role, under its
+grants and its policies, as they do in production. PGlite runs one
+statement at a time, so a statement of the owner never lands inside a
+transaction of the role.
+
 ## Transactions
 
 `transaction` runs a function inside a transaction of the client. A

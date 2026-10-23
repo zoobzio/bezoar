@@ -1,3 +1,5 @@
+import { quote } from "@bezoar/core";
+
 /**
  * The OID of each type the executor parses in its own way, and of the array
  * of each.
@@ -24,3 +26,9 @@ export const ARRAYS = `
  * depth of the transaction follows it.
  */
 export const SAVEPOINT = "bezoar_";
+
+/**
+ * Takes a role for the rest of the session. A scoped executor runs it once
+ * on each connection of its pool, the first time it takes the connection.
+ */
+export const ROLE = (role: string): string => `SET ROLE ${quote(role)}`;

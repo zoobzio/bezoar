@@ -15,9 +15,15 @@ export const VIRTUAL = {
 export const DECLARATION = "types/bezoar.d.ts";
 
 /**
- * The modules of a kit build the module adopts.
+ * The modules of a kit build the module adopts. Every build has these.
  */
 export const ENTRIES = ["index", "queries", "migrations", "seeds"] as const;
+
+/**
+ * The module of a kit build that carries its grants. A build made before
+ * roles existed has none, and the virtual build then exports no grant.
+ */
+export const ROLES = "roles";
 
 /**
  * The export of each module of a kit build, re-exported by the virtual
@@ -31,6 +37,11 @@ export const EXPORTS: Record<(typeof ENTRIES)[number], string> = {
   migrations: "migrations",
   seeds: "seeds",
 };
+
+/**
+ * The export of the roles module, re-exported by the virtual build.
+ */
+export const ROLES_EXPORT = "roles";
 
 /**
  * The drivers the module can connect with. `pg` connects to a server with

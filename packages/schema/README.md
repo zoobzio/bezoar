@@ -32,6 +32,10 @@ SQL of a database package. The definition is plain data and holds no SQL.
   identity, or a generation expression. A table column of a type the type
   table does not have is `unknown`. A table has a `kind`: `table`, or `view`
   for one that is read and never written.
+- **roles** maps each role of the database to the names of the queries it
+  has the privileges to run, as the kit found them. The member is optional:
+  a contract built before roles existed has none, and `Role<D>` is then
+  `never`.
 
 ```ts
 const contract = {
@@ -74,6 +78,8 @@ Row<D, "events.list">; // { id: number; title: string; weeks: (number | null)[] 
 Returns<D, "events.list">; // Row<D, "events.list">[]
 Returns<D, "events.touch">; // number, for a query with no column
 Database<D>; // { events: { id: Generated<number>; title: string; weeks: (number | null)[] | null } }
+Role<D>; // the role names of the contract: "web" | "admin"
+RoleQuery<D, "web">; // the queries the role may run: "events.list" | …
 ```
 
 `Database<D>` is the type parameter of a [kysely](https://kysely.dev)

@@ -112,20 +112,39 @@ export interface Statement {
  * database to its labels, in declaration order. `queries` maps each query
  * name to its statement. `tables` maps each table and view of the database
  * to its columns, by its bare name when the search path finds it and by
- * `schema.name` otherwise. The contract is plain data. The types of the
- * arguments, the rows, and the query builder derive from it. See
- * {@link Arguments}, {@link Row}, and {@link Database}.
+ * `schema.name` otherwise. `roles` maps each role of the database to the
+ * names of the queries it has the privileges to run, as the kit found them;
+ * a contract built before roles existed has no member. The contract is
+ * plain data. The types of the arguments, the rows, and the query builder
+ * derive from it. See {@link Arguments}, {@link Row}, {@link Database}, and
+ * {@link RoleQuery}.
  */
 export interface Definition {
   readonly enums: Readonly<Record<string, readonly string[]>>;
   readonly queries: Readonly<Record<string, Statement>>;
   readonly tables: Readonly<Record<string, Table>>;
+  readonly roles?: Readonly<Record<string, readonly string[]>>;
 }
 
 /**
  * The name of a query in a contract, as in `events.list`.
  */
 export type Query<D extends Definition> = keyof D["queries"] & string;
+
+/**
+ * The name of a role in a contract, as in `web`. A contract without roles
+ * has none.
+ */
+export type Role<D extends Definition> = keyof NonNullable<D["roles"]> & string;
+
+/**
+ * The name of a query the role `R` may run: one the kit found the role has
+ * the privileges for. A service scoped to a role offers these and no other.
+ */
+export type RoleQuery<D extends Definition, R extends Role<D>> = NonNullable<
+  D["roles"]
+>[R][number] &
+  Query<D>;
 
 /**
  * The name of a query that returns rows: one with a column. A call of one

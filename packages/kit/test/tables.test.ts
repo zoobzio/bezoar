@@ -12,6 +12,7 @@ const settings = {
   migrations: "src/migrations",
   seeds: "src/seeds",
   queries: "src/queries",
+  roles: "src/roles",
   outDir: ".output",
 };
 

@@ -9,14 +9,16 @@ import { describeQueries } from "./describe";
 import { emit } from "./emit";
 import { readSources } from "./read";
 import { define, readTypes } from "./resolve";
+import { checkRoles } from "./roles";
 import { columnsOf, readRelations } from "./tables";
 import { validate } from "./validate";
 
 /**
  * Generates the output of a project without writing it. The function
- * validates the config, reads the SQL, applies the migrations and the seeds
- * to a database in memory, reads the enums and the columns, describes each
- * query, builds the contract, and emits the files.
+ * validates the config, reads the SQL, applies the roles, the migrations,
+ * the grants, and the seeds to a database in memory, reads the enums and
+ * the columns, describes each query, checks each query under each role,
+ * builds the contract, and emits the files.
  *
  * @param config - The authored config.
  * @param root - The project root.
@@ -40,12 +42,14 @@ export const generate = async (
       columnsOf(relations),
     );
     const types = await readTypes(executor, described, relations);
+    const roles = await checkRoles(executor, sources.queries, sources.roles);
     const contract = define(
       sources.queries,
       described,
       types,
       enums,
       relations,
+      roles,
     );
     return {
       outDir: settings.outDir,

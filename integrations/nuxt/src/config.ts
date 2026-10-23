@@ -41,6 +41,22 @@ export interface NuxtBezoarConfig {
    * the migrations. Defaults to `false`.
    */
   seed?: boolean;
+
+  /**
+   * Whether the server applies the grants of the build when it starts: it
+   * declares their roles before the migrations and applies the grants after
+   * them, before the seeds. Defaults to `false`.
+   */
+  roles?: boolean;
+
+  /**
+   * The role the service is scoped to: a role of the build. `useBezoar()`
+   * offers the queries of the role and runs them as the role, and its type
+   * narrows to them. The migrations, the grants, and the seeds run on a
+   * connection of their own, as the login user. Without a role, the
+   * service offers every query as the login user.
+   */
+  role?: string;
 }
 
 /**
@@ -62,6 +78,12 @@ export interface BezoarRuntimeConfig {
 
   /** Whether the server runs the seeds when it starts. */
   seed: boolean;
+
+  /** Whether the server applies the grants when it starts. */
+  roles: boolean;
+
+  /** The role the service is scoped to. Empty for none. */
+  role: string;
 }
 
 /**

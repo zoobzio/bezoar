@@ -5,9 +5,9 @@ import { build } from "./build";
 const HELP = `Usage: bezoar <command> [options]
 
 Commands:
-  build  Apply the migrations and the seeds to a database in memory, describe
-         the queries, and write the output directory. Offline and
-         deterministic.
+  build  Apply the roles, the migrations, the grants, and the seeds to a
+         database in memory, describe the queries, check each under each
+         role, and write the output directory. Offline and deterministic.
 
 Options:
   -c, --config <file>  Config file (default: bezoar.config.ts)

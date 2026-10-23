@@ -11,6 +11,7 @@ const settings = {
   migrations: "src/migrations",
   seeds: "src/seeds",
   queries: "src/queries",
+  roles: "src/roles",
   outDir: ".output",
 };
 
@@ -42,6 +43,7 @@ describe("apply", () => {
       ],
       seeds: [],
       queries: [],
+      roles: [],
     };
     const error = apply(failing, sources);
     await expect(error).rejects.toThrow(InvalidSourceError);

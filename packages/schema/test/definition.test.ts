@@ -56,6 +56,30 @@ describe("definition", () => {
     expect(paths({ ...empty, enums: { text: ["a"] } })).toEqual(["enums.text"]);
   });
 
+  it("accepts roles that list queries of the contract", () => {
+    expect(
+      schema.safeParse({
+        ...definition,
+        roles: { web: ["events.list"], admin: [] },
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects a role that lists a query the contract lacks, or one twice", () => {
+    expect(paths({ ...definition, roles: { web: ["events.purge"] } })).toEqual([
+      "roles.web.0",
+    ]);
+    expect(
+      paths({ ...definition, roles: { web: ["events.list", "events.list"] } }),
+    ).toEqual(["roles.web.1"]);
+  });
+
+  it("rejects a role name that is not an identifier", () => {
+    expect(paths({ ...empty, roles: { "web-app": [] } })).toEqual([
+      "roles.web-app",
+    ]);
+  });
+
   it("rejects a query name that is not dotted identifiers", () => {
     const copy = altered((copy) => {
       queriesOf(copy)["events.list-all"] = listOf(copy);

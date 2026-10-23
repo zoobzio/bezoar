@@ -154,6 +154,57 @@ The transaction commits when the function returns and rolls back when it
 throws. Whether a transaction inside a transaction opens a savepoint is up
 to the driver.
 
+## Roles
+
+A contract built from a package with roles carries, for each role, the
+queries the kit found it may run. A container with a `role` makes a service
+over those queries alone, typed so: `db.admin.events.update` is not a member
+of the service of `web`, and `db.query("admin.events.update")` is a type
+error, and a `ForbiddenQueryError` by name at runtime. A role the contract
+does not have is an `UnknownRoleError` at construction.
+
+```ts
+const web = makeBezoar(contract, {
+  executor: pg(process.env.DATABASE_URL, { role: "web" }),
+  queries,
+  role: "web",
+});
+```
+
+The service does not take the role itself: the executor does. Each driver
+package takes a `role` and runs every statement as it. The database then
+enforces what the role may do, under its grants and its policies, for the
+queries of the contract and for the builder alike.
+
+`roles` applies the grants of a build. The kit builds the list: each entry
+has a role and its SQL.
+
+```ts
+import { roles } from "@bbf/database/roles";
+
+await db.roles.declare(roles); // the roles alone, before the migrations
+await db.migrate(migrations);
+await db.roles(roles); // the grants, after the tables exist
+await db.seed(seeds);
+```
+
+`roles.declare` makes each role the cluster lacks, as a role that cannot
+log in, and grants nothing. A migration that names a role, in a policy or a
+grant of its own, needs this first. `roles` makes the roles the cluster
+lacks, and then for each role revokes every privilege it holds on the
+tables, sequences, routines, and schemas of the database and runs its SQL,
+inside one transaction under an advisory lock. A grant file states the
+whole of the privileges of its role: a grant removed from the file is gone
+after the next run. A membership of a role in another, and a default
+privilege, are not revoked. A grant that fails is a `RoleError` with its
+role, and the run rolls back.
+
+The login users are the deployment's: a role of bezoar is a group, and a
+user joins it with `CREATE ROLE bbf_web LOGIN PASSWORD '…' IN ROLE web`.
+The package says what `web` may do and never who `web` is. A login user
+that is a member of its role alone cannot migrate or grant, so an app over
+one applies neither; the owner does.
+
 ## Migrations and seeds
 
 `migrate` applies the migrations the database lacks. The kit builds the
@@ -185,8 +236,8 @@ tracked. Write a seed so that it can run again. A seed that fails is a
 ## Names
 
 The members of the service are `config`, `schema`, `query`, `first`,
-`execute`, `build`, `transaction`, `migrate`, and `seed`. A query group
-cannot take one of these names,
+`execute`, `build`, `transaction`, `migrate`, `seed`, and `roles`. A query
+group cannot take one of these names,
 and a name cannot be both a query and a group. Either is an error at
 construction: `ReservedQueryError` or `AmbiguousQueryError`. `RESERVED`
 exports the list.
@@ -198,6 +249,10 @@ exports the list.
 - `InvalidRowError`: a row does not fit the columns, or the validator of a
   built query.
 - `QueryError`: the driver failed. `cause` is the driver's error.
+- `UnknownRoleError`: the container names a role the contract lacks.
+- `ForbiddenQueryError`: a service scoped to a role was asked, by name, for
+  a query the role may not run.
+- `RoleError`: a grant failed to apply. `cause` is the driver's error.
 - `MigrationDriftError`: the database holds a migration the list does not
   match.
 - `MigrationError`, `SeedError`: a migration or a seed failed. `cause` is

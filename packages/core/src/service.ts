@@ -15,8 +15,10 @@ import type {
   Bezoar,
   Config,
   Executor,
+  Grant,
   Options,
   Outcome,
+  Scoping,
   Service,
   Validator,
 } from "./types";
@@ -27,13 +29,16 @@ import { keys } from "objectively";
 import { BUILT, RESERVED } from "./constant";
 import { defineDialect } from "./dialect";
 import {
+  ForbiddenQueryError,
   InvalidArgumentsError,
   InvalidRowError,
   QueryError,
+  UnknownRoleError,
   reframe,
 } from "./error";
 import { defineGroups } from "./groups";
 import { migrate } from "./migrate";
+import { declareRoles, roles } from "./roles";
 import { seed } from "./seed";
 
 /**
@@ -50,17 +55,53 @@ const bind = (
 type Raw = Record<string, unknown>;
 
 /**
+ * The queries a service offers: those of its role, or every query of the
+ * contract when it has no role.
+ *
+ * @throws UnknownRoleError when the contract has no such role.
+ */
+const scopeOf = <D extends Definition>(
+  definition: D,
+  role: string | undefined,
+): readonly Query<D>[] => {
+  if (role === undefined) {
+    return keys(definition.queries);
+  }
+  const queries = definition.roles?.[role];
+  if (queries === undefined) {
+    throw new UnknownRoleError(role);
+  }
+  return queries as Query<D>[];
+};
+
+/**
  * Builds a {@link Bezoar} service over a container. A transaction builds
  * one over the executor of the transaction. The service inside a transaction
  * has the same surface as the one outside, with its own builder over the
- * executor of the transaction.
+ * executor of the transaction. A container with a role builds a service
+ * over the queries of the role alone.
  */
-export const defineService = <D extends Definition>(
+export const defineService = <D extends Definition, R extends Scoping<D>>(
   definition: D,
   schema: Schema<D>,
-  config: Config<D>,
+  config: Config<D, R>,
   options: Options<D>,
-): Bezoar<D> => {
+): Bezoar<D, R> => {
+  const names = scopeOf(definition, config.role);
+  const offered = new Set<string>(names);
+
+  /**
+   * Checks that the service offers a query.
+   *
+   * @throws ForbiddenQueryError when the service is scoped to a role and the
+   *   query is not one of its queries.
+   */
+  const admit = (query: Query<D>) => {
+    if (config.role !== undefined && !offered.has(query)) {
+      throw new ForbiddenQueryError(query, config.role);
+    }
+  };
+
   /**
    * Runs the SQL of a query on the executor of the container.
    *
@@ -95,6 +136,7 @@ export const defineService = <D extends Definition>(
    * @throws InvalidArgumentsError when the arguments do not fit the slots.
    */
   const perform = async (query: Query<D>, args: unknown): Promise<Outcome> => {
+    admit(query);
     const statement = definition.queries[query]!;
     const given: Record<string, unknown> = reframe(
       (issues) => new InvalidArgumentsError(query, issues),
@@ -249,12 +291,12 @@ export const defineService = <D extends Definition>(
     return validator === undefined ? row : proveWith(validator, 0, row);
   }
 
-  const transaction = <T>(fn: (tx: Bezoar<D>) => Promise<T>): Promise<T> =>
+  const transaction = <T>(fn: (tx: Bezoar<D, R>) => Promise<T>): Promise<T> =>
     config.executor.transaction((executor: Executor) =>
       fn(defineService(definition, schema, { ...config, executor }, options)),
     );
 
-  const service: Service<D> = {
+  const service: Service<D, R> = {
     config,
     schema,
     query: run,
@@ -264,20 +306,23 @@ export const defineService = <D extends Definition>(
     transaction,
     migrate: (migrations) => migrate(config.executor, migrations),
     seed: (seeds) => seed(config.executor, seeds),
+    roles: Object.assign(
+      (grants: readonly Grant[]) => roles(config.executor, grants),
+      {
+        declare: (grants: readonly Grant[]) =>
+          declareRoles(config.executor, grants),
+      },
+    ),
   };
 
-  const groups = defineGroups<D>(
-    keys(definition.queries),
-    new Set<string>(RESERVED),
-    (query) => {
-      const method = (args?: unknown) => run(query, args);
-      return returnsRows(query)
-        ? Object.assign(method, {
-            first: (args?: unknown) => take(query, args),
-          })
-        : method;
-    },
-  );
+  const groups = defineGroups<D>(names, new Set<string>(RESERVED), (query) => {
+    const method = (args?: unknown) => run(query, args);
+    return returnsRows(query)
+      ? Object.assign(method, {
+          first: (args?: unknown) => take(query, args),
+        })
+      : method;
+  });
 
-  return Object.assign(service, groups);
+  return Object.assign(service, groups) as Bezoar<D, R>;
 };

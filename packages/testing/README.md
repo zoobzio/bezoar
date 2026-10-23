@@ -44,10 +44,35 @@ The database closes when the block ends.
 A third argument passes the options of the service through, such as
 `onQuery`.
 
+## Roles
+
+`roles` takes the grants of the build. The roles are declared before the
+migrations, so a migration can name one in a policy, and the grants are
+applied after them, before the seeds, through `roles` of `@bezoar/core`.
+`role` scopes the service to one of them: the service offers the queries of
+the role and runs them as the role, as the app does, while the migrations,
+the grants, and the seeds ran as the owner.
+
+```ts
+import { roles } from "@bbf/database/roles";
+
+const db = await makeTestBezoar(contract, {
+  queries,
+  migrations,
+  seeds,
+  roles,
+  role: "web",
+});
+
+await db.web.events.list(); // runs as web, under its policies
+db.admin; // a type error: not a query of web
+```
+
 ## Errors
 
-A migration or a seed that fails throws `MigrationError` or `SeedError` from
-`@bezoar/core`, after the database is closed.
+A migration, a grant, or a seed that fails throws `MigrationError`,
+`RoleError`, or `SeedError` from `@bezoar/core`, after the database is
+closed. A role the contract does not have throws `UnknownRoleError`.
 
 ## Related
 

@@ -3,23 +3,32 @@ import { describe, expect, it, vi } from "vitest";
 import { migrations, seeds } from "../fixture";
 
 const virtual = vi.hoisted(() => ({
-  useBezoar: vi.fn(() => ({
+  useBezoar: vi.fn(() => ({})),
+  useBezoarOwner: vi.fn(() => ({
     migrate: vi.fn(async () => []),
     seed: vi.fn(async () => {}),
+    roles: Object.assign(
+      vi.fn(async () => {}),
+      { declare: vi.fn(async () => {}) },
+    ),
   })),
   closeBezoar: vi.fn(async () => {}),
 }));
 
 vi.mock("#imports", () => ({
   useRuntimeConfig: () => ({
-    bezoar: { migrate: false, seed: false },
+    bezoar: { migrate: false, seed: false, roles: false, role: "" },
   }),
   defineNitroPlugin: (plugin: unknown) => plugin,
 }));
 vi.mock("#bezoar/service", () => virtual);
 vi.mock("#bezoar/build", async () => {
   const fixture = await import("../fixture");
-  return { migrations: fixture.migrations, seeds: fixture.seeds };
+  return {
+    migrations: fixture.migrations,
+    seeds: fixture.seeds,
+    roles: fixture.roles,
+  };
 });
 
 import plugin from "../../src/runtime/server/plugin";
@@ -37,6 +46,7 @@ describe("plugin", () => {
       },
     });
     expect(virtual.useBezoar).toHaveBeenCalledOnce();
+    expect(virtual.useBezoarOwner).toHaveBeenCalledOnce();
     await hooks.close?.();
     expect(virtual.closeBezoar).toHaveBeenCalledOnce();
     expect(migrations.length + seeds.length).toBeGreaterThan(0);

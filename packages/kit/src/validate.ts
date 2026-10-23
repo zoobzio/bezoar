@@ -1,6 +1,6 @@
 import type { KitConfig, Settings } from "./types";
 
-import { MIGRATIONS, OUT_DIR, QUERIES, SEEDS } from "./constant";
+import { MIGRATIONS, OUT_DIR, QUERIES, ROLES, SEEDS } from "./constant";
 import { InvalidConfigError } from "./error";
 import { inside, normalize } from "./path";
 
@@ -30,6 +30,7 @@ export const validate = (config: KitConfig): Settings => {
     migrations: directory("migrations", config.migrations, MIGRATIONS),
     seeds: directory("seeds", config.seeds, SEEDS),
     queries: directory("queries", config.queries, QUERIES),
+    roles: directory("roles", config.roles, ROLES),
     outDir: directory("outDir", config.outDir, OUT_DIR),
   };
 

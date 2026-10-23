@@ -59,6 +59,25 @@ reads the array types of enums from the database and parses each as an
 array of text. It reads them again after each `exec`, so an enum a
 migration creates parses as soon as `migrate` returns.
 
+## Roles
+
+`pg(source, { role })` makes an executor that runs every statement as the
+role: each connection of the pool takes it with `SET ROLE` the first time
+the executor uses the connection, and keeps it. The login user of the
+connection string must be a member of the role, and a connection that
+cannot take it is discarded, with the error of Postgres as the error of
+the call.
+
+```ts
+const web = pg(process.env.DATABASE_URL, { role: "web" });
+const db = makeBezoar(contract, { executor: web, queries, role: "web" });
+```
+
+The pool of a scoped executor is its own. An executor without a role over
+the same pool would take a connection that has the role and run as it, so
+the owner's work, migrations and grants, runs on a second executor over a
+pool of its own: `pg(url)` beside `pg(url, { role })`.
+
 ## Transactions
 
 `transaction` takes a client from the pool, runs the function on it inside

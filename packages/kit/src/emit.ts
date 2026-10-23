@@ -89,8 +89,26 @@ const seeds = (sources: Sources): OutputFile[] => {
 };
 
 /**
- * The files of a build: the contract, the SQL, the migrations, and the seeds
- * as modules.
+ * The roles module: each grant as data, in file name order, for the roles
+ * runner of `@bezoar/core`.
+ */
+const roles = (sources: Sources): OutputFile[] => {
+  const entries = sources.roles.map(({ role, sql }) => ({ role, sql }));
+  return pair(
+    "roles",
+    [`export const roles = Object.freeze(${json(entries)});`],
+    [
+      "export declare const roles: readonly {",
+      "  readonly role: string;",
+      "  readonly sql: string;",
+      "}[];",
+    ],
+  );
+};
+
+/**
+ * The files of a build: the contract, the SQL, the migrations, the seeds,
+ * and the roles as modules.
  *
  * @param sources - The SQL the build read.
  * @param contract - The contract of the build.
@@ -100,4 +118,5 @@ export const emit = (sources: Sources, contract: Definition): OutputFile[] => [
   ...bundle(sources),
   ...migrations(sources),
   ...seeds(sources),
+  ...roles(sources),
 ];

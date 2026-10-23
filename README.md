@@ -3,12 +3,13 @@
 bezoar is a type-safe database layer for Postgres. The source is SQL. The
 build reads it and writes a typed client.
 
-A database package holds migrations, seeds and queries, each as plain SQL. A
-build kit applies the migrations to a hermetic Postgres, describes every
-query, and writes modules with declarations. The runtime
-service runs the queries by name, with the arguments and the rows typed by
-what the SQL does. An app imports the build and has the database: it can
-migrate, seed and query without the kit or the sources.
+A database package holds migrations, seeds, queries and roles, each as
+plain SQL. A build kit applies the migrations to a hermetic Postgres,
+describes every query, checks each under each role, and writes modules
+with declarations. The runtime service runs the queries by name, with the
+arguments and the rows typed by what the SQL does, and scoped to a role
+when the app has one. An app imports the build and has the database: it can
+migrate, seed, grant and query without the kit or the sources.
 
 This repo is a scaffold. The packages are not here yet. They land one at a
 time, in the order the workspace table lists them.
@@ -23,6 +24,7 @@ src/migrations/0001_events.sql
 src/seeds/events.sql
 src/queries/events/list.sql
 src/queries/events/bySlug.sql
+src/roles/web.sql
 ```
 
 A query is one file of Postgres SQL, named for its path: the directory is
@@ -121,6 +123,12 @@ lever:
   lock. The runner checks the checksum of each applied migration and applies
   what the tracking table lacks.
 - Seeds are untracked and run on demand. Write them to be idempotent.
+- A role is a file of grants named for it. The kit makes the role before
+  the migrations and applies the grants after, with what the role held
+  revoked first, so the file states the whole of its privileges. The build
+  checks every query under every role and the contract carries what each
+  may run, so a service scoped to a role offers those queries alone, typed
+  so, and runs them as the role. The login users are the deployment's.
 
 One table in the schema package maps each Postgres type to the TypeScript type
 the kit emits and the [zod](https://zod.dev) schema that checks it. The

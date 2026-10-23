@@ -1,7 +1,7 @@
 import type { Executor } from "@bezoar/core";
 import type { Definition, Statement, Table } from "@bezoar/schema";
 
-import type { Described, Enums, Query, Relation } from "./types";
+import type { Described, Enums, Query, Relation, Roles } from "./types";
 
 import { SCALARS, UNKNOWN } from "@bezoar/schema";
 import { within } from "objectively";
@@ -74,13 +74,15 @@ const known = (name: string, enums: Enums): boolean => {
  * for each query with its slots and columns typed, and a table for each
  * table and view with its columns typed. A query column of a type the type
  * table does not have fails the build. A table column of one is `unknown`,
- * so a table a query never reads still builds.
+ * so a table a query never reads still builds. The roles carry the queries
+ * each role may run.
  *
  * @param queries - The queries, as read.
  * @param described - The description of each query, by name.
  * @param types - The name of each type, by OID.
  * @param enums - The enums of the hermetic database.
  * @param relations - The tables and the views of the hermetic database.
+ * @param roles - The queries each role may run, by role.
  * @throws InvalidQueryError when a slot or a column has a type that is not
  *   a scalar of the type table or an enum of the database.
  */
@@ -90,6 +92,7 @@ export const define = (
   types: ReadonlyMap<number, string>,
   enums: Enums,
   relations: readonly Relation[] = [],
+  roles: Roles = {},
 ): Definition => {
   const statements: Record<string, Statement> = {};
 
@@ -143,5 +146,5 @@ export const define = (
     };
   }
 
-  return { enums, queries: statements, tables };
+  return { enums, queries: statements, tables, roles };
 };

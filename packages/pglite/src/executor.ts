@@ -1,9 +1,13 @@
 import type { Executor, Outcome } from "@bezoar/core";
-import type { Results, Transaction } from "@electric-sql/pglite";
+import type {
+  PGliteInterface,
+  Results,
+  Transaction,
+} from "@electric-sql/pglite";
 
 import type { Connection, Session } from "./types";
 
-import { PARSERS, SAVEPOINT } from "./constant";
+import { PARSERS, ROLE, SAVEPOINT } from "./constant";
 
 /**
  * The outcome of a query from the results of PGlite. The count is the rows
@@ -47,26 +51,56 @@ const savepoint = async <T>(
 };
 
 /**
+ * Opens a transaction of the client and takes the role of the session in
+ * it, when the session has one, before the function runs.
+ */
+const open = <T>(
+  session: Session,
+  client: PGliteInterface,
+  run: (tx: Transaction) => Promise<T>,
+): Promise<T> =>
+  client.transaction(async (tx) => {
+    if (session.role !== undefined) {
+      await tx.exec(ROLE(session.role));
+    }
+    return run(tx);
+  });
+
+/**
  * Builds an executor over a connection at a depth. The depth is zero at the
- * client and one more for each transaction inside.
+ * client and one more for each transaction inside. A session with a role
+ * runs each statement at depth zero inside a transaction that takes the
+ * role, and takes it in each transaction it opens; a statement deeper runs
+ * in a transaction that has it.
  */
 export const defineExecutor = (
   session: Session,
   connection: Connection,
   depth: number,
 ): Executor => {
+  const scoped = session.role !== undefined && "transaction" in connection;
+
   const query = async (
     sql: string,
     params: readonly unknown[],
-  ): Promise<Outcome> =>
-    outcome(
-      await connection.query<Record<string, unknown>>(sql, [...params], {
+  ): Promise<Outcome> => {
+    const statement = (on: Connection) =>
+      on.query<Record<string, unknown>>(sql, [...params], {
         parsers: PARSERS,
-      }),
+      });
+    return outcome(
+      await (scoped
+        ? open(session, connection, statement)
+        : statement(connection)),
     );
+  };
 
   const exec = async (sql: string): Promise<void> => {
-    await connection.exec(sql);
+    if (scoped) {
+      await open(session, connection, (tx) => tx.exec(sql));
+    } else {
+      await connection.exec(sql);
+    }
     session.changed = true;
     if (depth === 0) {
       await refresh(session);
@@ -77,7 +111,7 @@ export const defineExecutor = (
     run: (executor: Executor) => Promise<T>,
   ): Promise<T> => {
     if ("transaction" in connection) {
-      const result = await connection.transaction((tx) =>
+      const result = await open(session, connection, (tx) =>
         run(defineExecutor(session, tx, depth + 1)),
       );
       await refresh(session);

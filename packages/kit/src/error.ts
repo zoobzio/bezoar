@@ -60,6 +60,20 @@ export class InvalidSourceError extends Error {
 }
 
 /**
+ * Raised when a role file does not name a role: its file name is not an
+ * identifier. Carries the `path` of the file, relative to the project root.
+ */
+export class InvalidRoleError extends Error {
+  readonly path: string;
+
+  constructor(path: string, reason: string) {
+    super(`@bezoar/kit: ${path} ${reason}`);
+    this.name = "InvalidRoleError";
+    this.path = path;
+  }
+}
+
+/**
  * Raised when a query cannot be built: a path that does not name a query, a
  * file without SQL, a slot the SQL cannot type, SQL that Postgres rejects,
  * or a column of a type the type table does not have. Carries the `path` of

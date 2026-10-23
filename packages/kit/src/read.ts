@@ -1,10 +1,19 @@
-import type { MigrationFile, SeedFile, Settings, Sources } from "./types";
+import type {
+  GrantFile,
+  MigrationFile,
+  SeedFile,
+  Settings,
+  Sources,
+} from "./types";
 
 import { createHash } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { basename, join, posix } from "node:path";
 
+import { IDENTIFIER } from "@bezoar/schema";
+
 import { EXTENSION, MIGRATION } from "./constant";
+import { InvalidRoleError } from "./error";
 import { readQueries } from "./queries";
 
 /**
@@ -89,6 +98,33 @@ export const readSeeds = async (
 };
 
 /**
+ * Reads the roles of a directory, in file name order. The file name is the
+ * role, and the SQL is its grant.
+ *
+ * @param root - The project root.
+ * @param directory - The directory, relative to the root.
+ * @throws InvalidRoleError when a file name is not an identifier.
+ */
+export const readRoles = async (
+  root: string,
+  directory: string,
+): Promise<GrantFile[]> => {
+  const roles: GrantFile[] = [];
+  for (const file of await list(join(root, directory))) {
+    const path = posix.join(directory, file);
+    const role = basename(file, EXTENSION);
+    if (!IDENTIFIER.test(role)) {
+      throw new InvalidRoleError(
+        path,
+        `does not name a role; a role file is named for its role, so the file name must be an identifier`,
+      );
+    }
+    roles.push({ path, role, sql: await readFile(join(root, path), "utf8") });
+  }
+  return roles;
+};
+
+/**
  * Reads the SQL of a project.
  *
  * @param root - The project root.
@@ -101,4 +137,5 @@ export const readSources = async (
   migrations: await readMigrations(root, settings.migrations),
   seeds: await readSeeds(root, settings.seeds),
   queries: await readQueries(root, settings.queries),
+  roles: await readRoles(root, settings.roles),
 });

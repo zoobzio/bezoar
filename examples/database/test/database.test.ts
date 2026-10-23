@@ -5,6 +5,7 @@ import { z } from "zod";
 import { contract } from "../.dist/index.mjs";
 import { migrations } from "../.dist/migrations.mjs";
 import { queries } from "../.dist/queries.mjs";
+import { roles } from "../.dist/roles.mjs";
 import { seeds } from "../.dist/seeds.mjs";
 
 let db: Awaited<ReturnType<typeof makeTestBezoar<typeof contract>>>;
@@ -139,5 +140,37 @@ describe("the query builder over the database", () => {
       }),
     ).rejects.toThrow("abort");
     expect(await db.stations.list()).toHaveLength(4);
+  });
+});
+
+describe("the roles of the database", () => {
+  it("carries what each role may run", () => {
+    expect(contract.roles.desk).toEqual(Object.keys(contract.queries).sort());
+    expect(contract.roles.board).toEqual([
+      "departures.byId",
+      "departures.upcoming",
+      "routes.list",
+      "stations.list",
+    ]);
+  });
+
+  it("scopes a service to the board, which reads the timetable and books nothing", async () => {
+    await using board = await makeTestBezoar(contract, {
+      queries,
+      migrations,
+      seeds,
+      roles,
+      role: "board",
+    });
+    const departures = await board.departures.upcoming({
+      after: new Date("2026-11-01T00:00:00Z"),
+    });
+    expect(departures[0]).toMatchObject({ seats_left: 118 });
+    expect("bookings" in board).toBe(false);
+    const refused = await board
+      .execute(board.build.selectFrom("bookings").select("passenger"))
+      .catch((error: unknown) => error);
+    expect(refused).toMatchObject({ name: "QueryError", query: "build" });
+    expect(String((refused as Error).cause)).toContain("permission denied");
   });
 });

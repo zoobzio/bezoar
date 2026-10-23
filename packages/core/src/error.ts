@@ -155,6 +155,56 @@ export class SeedError extends Error {
 }
 
 /**
+ * Raised when a grant fails to apply: the role could not be made, a revoke
+ * failed, or its SQL failed. Carries the role and the driver's error as
+ * `cause`. The transaction rolls back.
+ */
+export class RoleError extends Error {
+  readonly role: string;
+
+  constructor(role: string, cause: unknown) {
+    super(`@bezoar/core: the grant of ${JSON.stringify(role)} failed`, {
+      cause,
+    });
+    this.name = "RoleError";
+    this.role = role;
+  }
+}
+
+/**
+ * Raised at construction when the service is scoped to a role the contract
+ * does not have.
+ */
+export class UnknownRoleError extends Error {
+  readonly role: string;
+
+  constructor(role: string) {
+    super(`@bezoar/core: the contract has no role ${JSON.stringify(role)}`);
+    this.name = "UnknownRoleError";
+    this.role = role;
+  }
+}
+
+/**
+ * Raised when a service scoped to a role is asked for a query the role may
+ * not run. The service of a role offers the queries of the role and no
+ * other.
+ */
+export class ForbiddenQueryError extends Error {
+  readonly query: string;
+  readonly role: string;
+
+  constructor(query: string, role: string) {
+    super(
+      `@bezoar/core: ${JSON.stringify(query)} is not a query of the role ${JSON.stringify(role)}`,
+    );
+    this.name = "ForbiddenQueryError";
+    this.query = query;
+    this.role = role;
+  }
+}
+
+/**
  * Runs a schema check and rethrows its {@link SchemaError} as the error that
  * `frame` makes from the issues. Any other error propagates untouched.
  *

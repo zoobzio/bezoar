@@ -20,6 +20,11 @@ export const SEEDS = "src/seeds";
 export const QUERIES = "src/queries";
 
 /**
+ * The default directory of roles, relative to the project root.
+ */
+export const ROLES = "src/roles";
+
+/**
  * The default output directory, relative to the project root.
  */
 export const OUT_DIR = "bezoar";

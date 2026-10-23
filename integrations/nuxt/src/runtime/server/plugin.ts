@@ -1,5 +1,5 @@
-import { migrations, seeds } from "#bezoar/build";
-import { closeBezoar, useBezoar } from "#bezoar/service";
+import { migrations, roles, seeds } from "#bezoar/build";
+import { closeBezoar, useBezoar, useBezoarOwner } from "#bezoar/service";
 
 import { definePlugin } from "./startup";
 
@@ -10,7 +10,9 @@ import { definePlugin } from "./startup";
  */
 export default definePlugin({
   useBezoar,
+  useBezoarOwner,
   closeBezoar,
   migrations,
   seeds,
+  roles,
 });
