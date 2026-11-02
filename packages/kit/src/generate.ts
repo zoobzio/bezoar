@@ -1,4 +1,4 @@
-import type { KitConfig, Output } from "./types";
+import type { Database, KitConfig, Output } from "./types";
 
 import { pglite } from "@bezoar/pglite";
 import { PGlite } from "@electric-sql/pglite";
@@ -14,9 +14,16 @@ import { columnsOf, readRelations } from "./tables";
 import { validate } from "./validate";
 
 /**
+ * Opens the hermetic database: a client from PGlite options, or the client
+ * the function of the config makes.
+ */
+const open = async (database: Database): Promise<PGlite> =>
+  typeof database === "function" ? database() : new PGlite(database);
+
+/**
  * Generates the output of a project without writing it. The function
  * validates the config, reads the SQL, applies the roles, the migrations,
- * the grants, and the seeds to a database in memory, reads the enums and
+ * the grants, and the seeds to the hermetic database, reads the enums and
  * the columns, describes each query, checks each query under each role,
  * builds the contract, and emits the files.
  *
@@ -30,7 +37,7 @@ export const generate = async (
   const settings = validate(config);
   const sources = await readSources(root, settings);
 
-  const client = new PGlite();
+  const client = await open(settings.database);
   const executor = pglite(client);
   try {
     await apply(executor, sources);

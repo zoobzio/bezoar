@@ -1,6 +1,7 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { PGlite } from "@electric-sql/pglite";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { defineConfig } from "../src/config";
@@ -59,6 +60,7 @@ describe("validate", () => {
       queries: "src/queries",
       roles: "src/roles",
       outDir: "bezoar",
+      database: {},
     });
   });
 
@@ -71,7 +73,24 @@ describe("validate", () => {
       queries: "src/queries",
       roles: "src/roles",
       outDir: ".output",
+      database: {},
     });
+  });
+
+  it("keeps PGlite options or a function as the database", () => {
+    const options = { extensions: {} };
+    const factory = () => new PGlite();
+    expect(validate({ database: options }).database).toBe(options);
+    expect(validate({ database: factory }).database).toBe(factory);
+  });
+
+  it("rejects a database that is neither options nor a function", () => {
+    expect(() =>
+      validate({ database: "memory://" as unknown as object }),
+    ).toThrow(InvalidConfigError);
+    expect(() => validate({ database: [] as unknown as object })).toThrow(
+      InvalidConfigError,
+    );
   });
 
   it("rejects a directory outside the project root with every issue", () => {

@@ -1,6 +1,8 @@
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { PGlite } from "@electric-sql/pglite";
+import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { build } from "../src/build";
@@ -36,6 +38,40 @@ describe("generate", () => {
       "roles.d.mts",
     ]);
     expect(output.enums.event_day).toEqual(["sunday", "monday", "tuesday"]);
+  });
+
+  it("builds on a database with the extensions the config loads", async () => {
+    await writeFile(
+      join(root, "src/migrations/0004_search.sql"),
+      "CREATE EXTENSION pg_trgm;\nCREATE INDEX events_slug_trgm ON events USING gin (slug gin_trgm_ops);\n",
+    );
+    await writeFile(
+      join(root, "src/queries/events/similar.sql"),
+      "SELECT id, slug FROM events WHERE slug % :term ORDER BY id",
+    );
+    await expect(generate({}, root)).rejects.toThrow(/pg_trgm/);
+    const output = await generate(
+      { database: { extensions: { pg_trgm } } },
+      root,
+    );
+    expect(output.contract.queries["events.similar"]?.slots).toEqual([
+      { name: "term", type: "text", nullable: false },
+    ]);
+  });
+
+  it("builds on the client a function of the config makes", async () => {
+    let client: PGlite | undefined;
+    const output = await generate(
+      {
+        database: () => {
+          client = new PGlite();
+          return client;
+        },
+      },
+      root,
+    );
+    expect(output.enums.event_day).toEqual(["sunday", "monday", "tuesday"]);
+    expect(client?.closed).toBe(true);
   });
 });
 

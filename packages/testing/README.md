@@ -44,6 +44,27 @@ The database closes when the block ends.
 A third argument passes the options of the service through, such as
 `onQuery`.
 
+## Database
+
+The PGlite in memory loads no extension on its own. A migration that
+creates one, such as `pg_trgm` for a trigram index, needs `database` to
+load it: PGlite options, with the extension imported from
+`@electric-sql/pglite/contrib/<name>`.
+
+```ts
+import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm";
+
+const db = await makeTestBezoar(contract, {
+  queries,
+  migrations,
+  database: { extensions: { pg_trgm } },
+});
+```
+
+For more than options, `database` takes a function that returns a PGlite
+client, made however the test needs. Each call makes its own, and `close`
+closes it.
+
 ## Roles
 
 `roles` takes the grants of the build. The roles are declared before the

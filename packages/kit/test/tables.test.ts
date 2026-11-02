@@ -14,6 +14,7 @@ const settings = {
   queries: "src/queries",
   roles: "src/roles",
   outDir: ".output",
+  database: {},
 };
 
 const executor = pglite();

@@ -1,5 +1,13 @@
 import type { Grant, Migration, Seed } from "@bezoar/core";
 import type { Definition, TableKind } from "@bezoar/schema";
+import type { PGlite, PGliteOptions } from "@electric-sql/pglite";
+
+/**
+ * The hermetic database of a build: PGlite options, such as the extensions
+ * the migrations need, or a function that makes the client. The kit closes
+ * the client when the build ends.
+ */
+export type Database = PGliteOptions | (() => PGlite | Promise<PGlite>);
 
 /**
  * The authored `bezoar.config.ts`: where the SQL lives and where the build
@@ -34,6 +42,15 @@ export interface KitConfig {
    * The output directory. Defaults to `bezoar`.
    */
   outDir?: string;
+
+  /**
+   * The hermetic database: PGlite options, or a function that makes the
+   * client. A migration that creates an extension needs it loaded here,
+   * such as `{ extensions: { pg_trgm } }` from
+   * `@electric-sql/pglite/contrib/pg_trgm`. Defaults to a database in
+   * memory with no extensions.
+   */
+  database?: Database;
 }
 
 /**
@@ -45,6 +62,7 @@ export interface Settings {
   queries: string;
   roles: string;
   outDir: string;
+  database: Database;
 }
 
 /**

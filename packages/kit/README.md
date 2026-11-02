@@ -15,6 +15,7 @@ Put `bezoar.config.ts` in the project root.
 
 ```ts
 import { defineConfig } from "@bezoar/kit";
+import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm";
 
 export default defineConfig({
   // Optional. The directory of migrations. Defaults to src/migrations.
@@ -31,12 +32,24 @@ export default defineConfig({
 
   // Optional. The output directory. Defaults to bezoar.
   outDir: ".output",
+
+  // Optional. The hermetic database: PGlite options, or a function that
+  // makes the client. Defaults to a database in memory with no extensions.
+  database: { extensions: { pg_trgm } },
 });
 ```
 
 Every path is relative to the project root and must stay inside it. The kit
 checks the config before it reads a file, and reports every problem
 together.
+
+The build runs in a PGlite in memory, which loads no extension on its own.
+A migration that creates one, such as `pg_trgm` for a trigram index, needs
+`database` to load it: import the extension from
+`@electric-sql/pglite/contrib/<name>` and pass it in `extensions`. For
+more than options, `database` takes a function that returns a `PGlite`,
+made however the project needs. The kit closes the client when the build
+ends.
 
 ## Sources
 

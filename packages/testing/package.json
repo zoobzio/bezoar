@@ -30,6 +30,7 @@
   "dependencies": {
     "@bezoar/core": "workspace:*",
     "@bezoar/pglite": "workspace:*",
-    "@bezoar/schema": "workspace:*"
+    "@bezoar/schema": "workspace:*",
+    "@electric-sql/pglite": "catalog:"
   }
 }

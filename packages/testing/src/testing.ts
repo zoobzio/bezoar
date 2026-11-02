@@ -1,23 +1,30 @@
 import type { Options, Scoping } from "@bezoar/core";
 import type { Definition } from "@bezoar/schema";
 
-import type { TestBezoar, TestConfig } from "./types";
+import type { Database, TestBezoar, TestConfig } from "./types";
 
 import { makeBezoar } from "@bezoar/core";
 import { pglite } from "@bezoar/pglite";
 
 /**
- * Builds a {@link Bezoar} service over a fresh PGlite in memory, with the
- * roles declared, the migrations applied, the grants applied, and the seeds
- * run. Each call makes its own database. `close` ends it, and so does
- * `await using`.
+ * Opens the database of a service: a client from PGlite options, or the
+ * client the function of the config makes.
+ */
+const open = async (database: Database = {}) =>
+  pglite(typeof database === "function" ? await database() : database);
+
+/**
+ * Builds a {@link Bezoar} service over a fresh PGlite, in memory unless the
+ * config says otherwise, with the roles declared, the migrations applied,
+ * the grants applied, and the seeds run. Each call makes its own database.
+ * `close` ends it, and so does `await using`.
  *
  * With a role, the service is scoped to it: it offers the queries of the
  * role and runs them as the role, over the same database the owner set up.
  *
  * @param definition - The contract: the `contract` export of a build.
  * @param config - The SQL bundle, the migrations, the seeds, the grants,
- *   and the role of the build.
+ *   and the role of the build, and the database to make.
  * @param options - The runtime features of the service.
  * @throws MigrationError, RoleError, or SeedError when a file fails, and
  *   UnknownRoleError when the contract has no such role. The database is
@@ -31,7 +38,7 @@ export const makeTestBezoar = async <
   config: TestConfig<D, R>,
   options: Options<D> = {},
 ): Promise<TestBezoar<D, R>> => {
-  const executor = pglite();
+  const executor = await open(config.database);
   const close = () => executor.close();
   const owner = makeBezoar(
     definition,

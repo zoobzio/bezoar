@@ -7,6 +7,8 @@ import {
   RoleError,
   UnknownRoleError,
 } from "@bezoar/core";
+import { PGlite } from "@electric-sql/pglite";
+import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm";
 import { describe, expect, it, vi } from "vitest";
 
 import { makeTestBezoar } from "../src/testing";
@@ -68,6 +70,45 @@ describe("makeTestBezoar", () => {
       expect(await db.events.count.first()).toEqual({ total: 0 });
     }
     await expect(kept.events.count.first()).rejects.toThrow(QueryError);
+  });
+
+  it("makes the database from PGlite options", async () => {
+    const search: Migration[] = [
+      ...migrations,
+      {
+        version: "0002",
+        name: "search",
+        checksum: "b",
+        sql: `CREATE EXTENSION pg_trgm;
+              CREATE INDEX events_slug_trgm ON events USING gin (slug gin_trgm_ops);`,
+      },
+    ];
+    await expect(
+      makeTestBezoar(contract, { queries, migrations: search }),
+    ).rejects.toThrow(MigrationError);
+    await using db = await makeTestBezoar(contract, {
+      queries,
+      migrations: search,
+      seeds,
+      database: { extensions: { pg_trgm } },
+    });
+    expect(await db.events.count.first()).toEqual({ total: 1 });
+  });
+
+  it("makes the database with a function of the config", async () => {
+    let client: PGlite | undefined;
+    const db = await makeTestBezoar(contract, {
+      queries,
+      migrations,
+      database: () => {
+        client = new PGlite();
+        return client;
+      },
+    });
+    expect(await db.events.count.first()).toEqual({ total: 0 });
+    expect(client?.closed).toBe(false);
+    await db.close();
+    expect(client?.closed).toBe(true);
   });
 
   it("closes the database and throws when a migration fails", async () => {

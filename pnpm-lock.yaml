@@ -334,6 +334,9 @@ importers:
       '@bezoar/schema':
         specifier: workspace:*
         version: link:../schema
+      '@electric-sql/pglite':
+        specifier: 'catalog:'
+        version: 0.5.10
 
 packages:
 

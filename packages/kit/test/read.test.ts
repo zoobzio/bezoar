@@ -78,6 +78,7 @@ describe("readSources", () => {
       queries: "src/queries",
       roles: "src/roles",
       outDir: ".output",
+      database: {},
     });
     expect(sources.migrations).toHaveLength(3);
     expect(sources.seeds).toHaveLength(1);
