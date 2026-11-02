@@ -1,5 +1,20 @@
 # @bezoar/nuxt
 
+## 0.0.6
+
+### Patch Changes
+
+- [`c882d15`](https://github.com/zoobzio/bezoar/commit/c882d154b99b5d6a2e20e19d19523866519d0661) Thanks [@zoobzio](https://github.com/zoobzio)! - Database. The kit config and `makeTestBezoar` take `database`: PGlite
+  options, or a function that makes the client. A migration that creates an
+  extension, such as `pg_trgm` for a trigram index, loads it there with
+  `{ extensions: { pg_trgm } }` from `@electric-sql/pglite/contrib/pg_trgm`,
+  so the build and the tests run on a database that has it. The default stays
+  a database in memory with no extensions.
+- Updated dependencies [[`c882d15`](https://github.com/zoobzio/bezoar/commit/c882d154b99b5d6a2e20e19d19523866519d0661)]:
+  - bezoar@0.0.6
+  - @bezoar/pglite@0.0.6
+  - @bezoar/pg@0.0.6
+
 ## 0.0.5
 
 ### Patch Changes
